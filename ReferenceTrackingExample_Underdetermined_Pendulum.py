@@ -7,6 +7,7 @@ import time
 from collections import namedtuple
 from scipy import integrate
 import matplotlib._pylab_helpers
+from danpy.sb import dsb,get_terminal_width
 
 def return_primary_source(Settings):
 	import numpy as np
@@ -1570,58 +1571,6 @@ def return_MA_matrix_functions(AllMuscleSettings,ReturnMatrixFunction=False,θ_P
 							for muscle in MuscleList])
 	# returns an (n,m) matrix when n is the number of muscles and m is the number of DOFS. We chose to return R.T because this is commonly utilized in muscle velocity calculations.
 	return(R_Transpose,dR_Transpose,d2R_Transpose)
-def statusbar(i,N,**kwargs):
-	"""
-	i is the current iteration (must be an int) and N is the length of
-	the range (must be an int). i must also be in [0,N).
-
-	~~~~~~~~~~~~~~
-	**kwargs
-	~~~~~~~~~~~~~~
-
-	StartTime should equal time.time() and should be defined before your
-	loop to ensure that you get an accurate representation of elapsed time.
-
-	Title should be a str that will be displayed before the statusbar. Title
-	should be no longer than 25 characters.
-
-	~~~~~~~~~~~~~~
-
-	NOTE: you should place a print('\n') after the loop to ensure you
-	begin printing on the next line.
-
-	"""
-	import time
-	from scipy import interpolate
-	import numpy as np
-	StartTime = kwargs.get("StartTime",False)
-	Title = kwargs.get("Title",'')
-	global time_array
-	global TimeLeft
-	assert type(i)==int, "i must be an int"
-	assert type(N)==int, "N must be an int"
-	assert N>i, "N must be greater than i"
-	assert N>0, "N must be a positive integer"
-	assert i>=0, "i must not be negative (can be zero)"
-	assert type(Title) == str, "Title should be a string"
-	assert len(Title) <= 22, "Title should be less than 25 characters"
-	if Title != '' : Title = ' '*(22-len(Title)) + Title + ' : '
-	statusbar = Title +'[' + '\u25a0'*int((i+1)/(N/50)) + '\u25a1'*(50-int((i+1)/(N/50))) + '] '
-	TimeBreak = abs
-	if StartTime != False:
-		if i==0:
-			time_array = []
-			TimeLeft = '--'
-		elif i==int(0.02*N):
-			time_array.append(time.time()-StartTime)
-			TimeLeft = '{0:1.1f}'.format(time_array[-1]*(N/(i+1)))
-		elif i%int(0.02*N)==0:
-			time_array.append(time.time()-StartTime)
-			TimeLeft = '{0:1.1f}'.format(float(interpolate.interp1d(np.arange(len(time_array)),time_array,fill_value='extrapolate')(49))-time_array[-1])
-		print(statusbar + '{0:1.1f}'.format((i+1)/N*100) + '% complete, ' + '{0:1.1f}'.format(time.time() - StartTime) \
-			+ 'sec, (est. ' + TimeLeft,' sec left)		\r', end='')
-	else:
-		print(statusbar + '{0:1.1f}'.format((i+1)/N*100) + '% complete           \r',end = '')
 
 """
 ################################
@@ -3765,12 +3714,12 @@ while AnotherIteration1 == True:
 	    NoiseArray1 = np.zeros((2,len(Time1)))
 
 	try:
-		StartTime = time.time()
+		statusbar = dsb(0,len(Time1)-1,title="Tension Controller")
 		for i in range(len(Time1)-1):
 			U1[:,i+1] = return_U_tension_driven(Time1[i],X1[:,i],U1[:,i],Noise = NoiseArray1[:,i])
 			X1[:,i+1] = X1[:,i] + dt*np.array([dX1_dt(X1[:,i]),\
 												dX2_dt(X1[:,i],U=U1[:,i+1])])
-			statusbar(i,len(Time1)-1,StartTime=StartTime,Title="Tension Controlled")
+			statusbar.update(i)
 		AnotherIteration1 = False
 	except:
 		AttemptNumber1 += 1

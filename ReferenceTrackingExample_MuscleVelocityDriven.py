@@ -1776,10 +1776,10 @@ def dX4_dt(X,U=None):
 
 ### Reference Trajectory ###
 
-r = lambda t: Amp*np.sin(Freq*t) + Base
-dr = lambda t: Amp*Freq*np.cos(Freq*t)
-d2r = lambda t: -Amp*Freq**2*np.sin(Freq*t)
-d3r = lambda t: -Amp*Freq**3*np.cos(Freq*t)
+r = lambda t: Amp*np.cos(Freq*t) + Base
+dr = lambda t: -Amp*Freq*np.sin(Freq*t)
+d2r = lambda t: -Amp*Freq**2*np.cos(Freq*t)
+d3r = lambda t: Amp*Freq**3*np.sin(Freq*t)
 
 ############################
 
@@ -1808,7 +1808,7 @@ def dA2(t,X):
 	return(dZ1(t,X) + d2A1(t,X) - c1*np.cos(X[0])*dX1_dt(X) - k2*dZ2(t,X))
 def Z3(t,X):
 	return(c2*R1(X)*X[2] + c2*R2(X)*X[3] - A2(t,X))
-def A3(t,X,r1,r2,kt_1,kt_2):
+def A3(t,X):
 	dr1_dx1 = dR1_dx1(X)
 	dr2_dx1 = dR2_dx1(X)
 	return(Z2(t,X) - dA2(t,X) + k3*Z3(t,X) \
@@ -1821,13 +1821,9 @@ def return_constraint_variables_tension_driven(t,X):
 	Constraint = A2(t,X)
 	return(Coefficient1,Coefficient2,Constraint)
 def return_constraint_variables_muscle_velocity_driven(t,X):
-	r1 = R1(X)
-	r2 = R2(X)
-	kt_1 = KT_1(X)
-	kt_2 = KT_2(X)
 	Coefficient1 = c2*c3*r1*kt_1
 	Coefficient2 = c2*c4*r2*kt_2
-	Constraint = A3(t,X,r1,r2,kt_1,kt_2)
+	Constraint = A3(t,X)
 	return(Coefficient1,Coefficient2,Constraint)
 
 def return_U_muscle_velocity_driven(t:float,X,U,**kwargs):
