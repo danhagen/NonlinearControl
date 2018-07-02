@@ -74,6 +74,7 @@ def MA_function(Parameters,θ_PS=None):
 					np.piecewise(θ,[θ<threshold,θ>=threshold],\
 									[MomentArm(θ),MomentArm(threshold)])
 		return(PiecewiseMomentArm)
+
 def MA_deriv(Parameters,θ_PS=None):
 	"""
 	Note:
@@ -197,6 +198,7 @@ def MA_deriv(Parameters,θ_PS=None):
 									np.piecewise(θ,[θ<threshold,θ>=threshold],\
 													[Derivative(θ),0])
 		return(PiecewiseDerivative)
+
 def MA_2nd_deriv(Parameters,θ_PS=None):
 	"""
 	Note:
@@ -370,6 +372,7 @@ def MA_2nd_deriv(Parameters,θ_PS=None):
 									np.piecewise(θ,[θ<threshold,θ>=threshold],\
 													[SecondDerivative(θ),0])
 		return(PiecewiseSecondDerivative)
+
 def return_MA_matrix_functions(
 		AllMuscleSettings,ReturnMatrixFunction=False,θ_PS=None):
 	"""returns an (n,m) matrix when n is the number of muscles and m is the number of DOFS. We chose to return R.T because this is commonly utilized in muscle velocity calculations.
@@ -405,3 +408,73 @@ def return_MA_matrix_functions(
 						MA_2nd_deriv(AllMuscleSettings[muscle]["Elbow MA"],θ_PS=θ_PS)(θ_EFE)] \
 							for muscle in MuscleList])
 	return(R_Transpose,dR_Transpose,d2R_Transpose)
+
+def plot_MA_values(t,X,**kwargs):
+	"""
+	Take the numpy.ndarray time array (t) of size (N,) and the state space numpy.ndarray (X) of size (2,N), (4,N), or (8,N), and plots the moment are values of the two muscles versus time and along the moment arm function.
+
+	~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	**kwargs
+	~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	1) InputString - must be a string. Used to alter the figure Title. Default is None.
+	"""
+	import matplotlib.pyplot as plt
+	import numpy as np
+
+	assert (np.shape(X)[0] in [2,4,8]) \
+				and (np.shape(X)[1] == len(t)) \
+					and (str(type(X)) == "<class 'numpy.ndarray'>"), \
+			"X must be a (2,N), (4,N), or (8,N) numpy.ndarray, where N is the length of t."
+
+	assert np.shape(t) == (len(t),) and str(type(t)) == "<class 'numpy.ndarray'>", "t must be a (N,) numpy.ndarray."
+
+	InputString = kwargs.get("InputString",None)
+	assert InputString is None or type(InputString)==str, "InputString must either be a string or None."
+	if InputString is None:
+		DescriptiveTitle = "Moment arm equations"
+	else:
+		assert type(InputString)==str, "InputString must be a string"
+		DescriptiveTitle = "Moment arm equations\n(" + InputString + " Driven)"
+
+	fig, ((ax1,ax2),(ax3,ax4)) = plt.subplots(2,2,figsize=(8,6))
+	plt.subplots_adjust(left = 0.15,hspace=0.1,bottom=0.1)
+	plt.suptitle(DescriptiveTitle)
+
+	ax1.plot(np.linspace(0,np.pi*(160/180),1001),\
+				np.array(list(map(lambda x1: R1([x1]),np.linspace(0,np.pi*(160/180),1001)))),\
+				'0.70')
+	ax1.plot(np.linspace(min(X[0,:]),max(X[0,:]),101),\
+				np.array(list(map(lambda x1: R1([x1]),np.linspace(min(X[0,:]),max(X[0,:]),101)))),\
+				'g',lw=3)
+	ax1.set_xticks([0,np.pi/4,np.pi/2,3*np.pi/4,np.pi])
+	ax1.set_xticklabels([""]*len(ax1.get_xticks()))
+	ax1.set_ylabel("Moment Arm for\n Muscle 1 (m)")
+
+	"""
+	Note: Need to Transpose X in order for Map to work.
+	"""
+
+	ax2.plot(t,np.array(list(map(lambda X: R1(X),X.T))),'g')
+	ax2.set_ylim(ax1.get_ylim())
+	ax2.set_yticks(ax1.get_yticks())
+	ax2.set_yticklabels([""]*len(ax1.get_yticks()))
+	ax2.set_xticklabels([""]*len(ax2.get_xticks()))
+
+	ax3.plot(np.linspace(0,np.pi*(160/180),1001),\
+				np.array(list(map(lambda x1: R2([x1]),np.linspace(0,np.pi*(160/180),1001)))),\
+				'0.70')
+	ax3.plot(np.linspace(min(X[0,:]),max(X[0,:]),101),\
+				np.array(list(map(lambda x1: R2([x1]),np.linspace(min(X[0,:]),max(X[0,:]),101)))),\
+				'r',lw=3)
+	ax3.set_xticks([0,np.pi/4,np.pi/2,3*np.pi/4,np.pi])
+	ax3.set_xticklabels([r"$0$",r"$\frac{\pi}{4}$",r"$\frac{\pi}{2}$",r"$\frac{3\pi}{4}$",r"$\pi$"])
+	ax3.set_xlabel("Joint Angle (rads)")
+	ax3.set_ylabel("Moment Arm for\n Muscle 2 (m)")
+
+	ax4.plot(t,np.array(list(map(lambda X: R2(X),X.T))),'r')
+	ax4.set_ylim(ax3.get_ylim())
+	ax4.set_yticks(ax3.get_yticks())
+	ax4.set_yticklabels([""]*len(ax3.get_yticks()))
+	ax4.set_xlabel("Time (s)")
+	return(fig,[ax1,ax2,ax3,ax4])

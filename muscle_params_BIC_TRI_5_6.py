@@ -70,8 +70,7 @@ lTo1 = unit_conversion(
 
 r1 = np.array(R_Transpose[:,1].T)[0][0]
 dr1_dθ = np.array(dR_Transpose[:,1].T)[0][0]
-d2r1_dθ2= np.array(d2R_Transpose[:,1].T)[0][0]
-
+d2r1_dθ2 = np.array(d2R_Transpose[:,1].T)[0][0]
 
 def R1(X):
 	return(r1(X[0])) #
