@@ -20,6 +20,9 @@ def return_initial_tension(X_o,**kwargs):
 	2) InitialAngularAcceleration - must be a float or an int. Default is 0 (starting from rest).
 
 	"""
+	Seed = kwargs.get("Seed",None)
+	assert type(Seed) in [float,int] or Seed is None, "Seed must be a float or an int or None."
+	np.random.seed(Seed)
 
 	assert (np.shape(X_o) in [(2,),(4,),(8,)]) \
 			and (str(type(X_o)) == "<class 'numpy.ndarray'>"), \

@@ -48,6 +48,7 @@ def return_MTU_velocity(state_equations,MA_equations):
             )
 
     return(v_MTU)
+
 def return_MTU_acceleration(state_equations,MA_equations):
     """
     MTU acceleration equation for a simple hinge joint with dynamics given by a simple pendulum equation,

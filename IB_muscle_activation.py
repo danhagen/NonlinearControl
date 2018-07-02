@@ -4,7 +4,6 @@ from IB_tendon_tension import *
 MaxStep_Activation = 0.003125 # percentage of positive maximum (1)
 Activation_Bounds = [[0,1],[0,1]]
 
-
 def return_constraint_variables_muscle_activation_driven(t,X):
 	Coefficient1 = c2*c3*c6*R1(X)*KT_1(X)*FLV_1(X)
 	Coefficient2 = c2*c4*c10*R2(X)*KT_2(X)*FLV_2(X)
@@ -379,6 +378,7 @@ def animate_muscle_activation_driven(t,X,U,**kwargs):
 
 	ani = animation.FuncAnimation(fig, animate, np.arange(1, np.shape(X)[1],1), init_func=init,interval=1, blit=False)
 	plt.show()
+
 def plot_individual_constraint_versus_time_muscle_activation_driven(
 		t,X,**kwargs):
 	"""
@@ -442,6 +442,7 @@ def plot_individual_constraint_versus_time_muscle_activation_driven(
 		return(fig)
 	else:
 		plt.show()
+
 def plot_individual_coefficient2_versus_time_muscle_activation_driven(
 	t,X,**kwargs):
 	"""
@@ -509,6 +510,7 @@ def plot_individual_coefficient2_versus_time_muscle_activation_driven(
 		return(fig)
 	else:
 		plt.show()
+
 def plot_individual_coefficient1_versus_time_muscle_activation_driven(
 	t,X,**kwargs):
 	"""
