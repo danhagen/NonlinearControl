@@ -1,33 +1,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import time
-
 from termcolor import cprint,colored
-
 from danpy.sb import dsb,get_terminal_width
 from IB_muscle_activation import *
 
-"""
 
-################################
-###### Activation Driven #######
-################################
-
-x_1 &= \theta \\
-x_2 &= \dot{\theta} \\
-x_3 &= T_{1} \\
-x_4 &= T_{2} \\
-x_5 &= l_{m,1} \\
-x_6 &= l_{m,2} \\
-x_7 &= v_{m,1} \\
-x_8 &= v_{m,2} \\
-u_1 &= \alpha_1 \\
-u_2 &= \alpha_2 \\
-
-"""
-
-
-def return_U_muscle_activation_driven(i,t,X,U,**kwargs):
+def return_U_muscle_activation_nearest_neighbor(i,t,X,U,**kwargs):
 	"""
 	Takes in current step (i), numpy.ndarray of time (t) of shape (N,), state numpy.ndarray (X) of shape (8,), and previous input numpy.ndarray (U) of shape (2,) and returns the input for this time step.
 
@@ -114,18 +93,6 @@ def return_U_muscle_activation_driven(i,t,X,U,**kwargs):
 	u2 = FeasibleInput2[0]
 	return(np.array([u1,u2]))
 
-def return_length_of_nonzero_array(X):
-	"""
-	Takes in a numpy.ndarray X of shape (m,n) and returns the length of the array that removes any trailing zeros.
-	"""
-	assert str(type(X))=="<class 'numpy.ndarray'>", "X should be a numpy array"
-	assert np.shape(X)[1]!=1, "X should be a wide rectangular array. (m,1) is a column, therefore a nonzero X of this shape will return 1 (trivial solution). Transpose X to properly identify nonzero array length."
-	assert np.shape(X)!=(1,1), "Check input. Should not be of shape (1,1) (trivial solution)."
-	if (X[:,1:]!=np.zeros(np.shape(X[:,1:]))).all():
-		return(np.shape(X)[1])
-	else:
-		return(np.argmax((X[:,1:] == np.zeros(np.shape(X[:,1:]))).sum(axis=0) == np.shape(X[:,1:])[0])+1)
-
 def run_sim_MAT(**kwargs):
 	"""
 	Runs one simulation for MINIMUM ACTIVATION TRANSITION control.
@@ -178,7 +145,7 @@ def run_sim_MAT(**kwargs):
 			cprint("Attempt #" + str(int(AttemptNumber)) + ":\n", 'green')
 			statusbar = dsb(0,N-1,title=run_sim_MAT.__name__)
 			for i in range(N-1):
-				U[:,i+1] = return_U_muscle_activation_driven(i,Time,X[:,i],U[:,i],Noise = NoiseArray[:,i])
+				U[:,i+1] = return_U_muscle_activation_nearest_neighbor(i,Time,X[:,i],U[:,i],Noise = NoiseArray[:,i])
 				X[:,i+1] = X[:,i] + dt*np.array([	dX1_dt(X[:,i]),\
 													dX2_dt(X[:,i]),\
 													dX3_dt(X[:,i]),\
@@ -290,41 +257,3 @@ def plot_N_sim_MAT(t,TotalX,TotalU,**kwargs):
 		return([fig1,fig2,fig3,fig4,fig5])
 	else:
 		plt.show()
-
-def save_figures(BaseFileName,**kwargs):
-	import os.path
-	import matplotlib._pylab_helpers
-	from matplotlib.backends.backend_pdf import PdfPages
-
-	figs = kwargs.get("figs",
-		[manager.canvas.figure for manager in matplotlib._pylab_helpers.Gcf.get_all_fig_managers()]
-		)
-
-	i = 1
-	FileName = BaseFileName + "_" + "{:0>2d}".format(i) + ".pdf"
-	if os.path.exists(FileName) == True:
-		while os.path.exists(FileName) == True:
-			i += 1
-			FileName = BaseFileName + "_" + "{:0>2d}".format(i) + ".pdf"
-	PDFFile = PdfPages(FileName)
-	if len(figs)==1:
-		PDFFile.savefig(figs[0])
-	else:
-		[PDFFile.savefig(fig) for fig in figs]
-	PDFFile.close()
-
-N_seconds = 1
-N = N_seconds*10000 + 1
-t = np.linspace(0,N_seconds,N)
-dt = t[1]-t[0]
-
-TotalX,TotalU = run_N_sim_MAT(NumberOfTrials=1)
-
-# plot_N_sim_MAT(t,TotalX,TotalU,Return=False)
-# plt.show()
-
-figs = plot_N_sim_MAT(t,TotalX,TotalU,Return=True)
-# figs=[manager.canvas.figure
-#          for manager in matplotlib._pylab_helpers.Gcf.get_all_fig_managers()]
-save_figures("1DOF_2DOA_Minimum_Activation_Transition")
-plt.close('all')

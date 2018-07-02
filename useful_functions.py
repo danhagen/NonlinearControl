@@ -15,7 +15,6 @@ def return_length_of_nonzero_array(X):
 	else:
 		return(np.argmax((X[:,1:] == np.zeros(np.shape(X[:,1:]))).sum(axis=0) == np.shape(X[:,1:])[0])+1)
 
-
 def save_figures(BaseFileName,**kwargs):
 	figs = kwargs.get("figs",
 		[manager.canvas.figure for manager in matplotlib._pylab_helpers.Gcf.get_all_fig_managers()]

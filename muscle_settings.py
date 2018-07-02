@@ -1071,12 +1071,14 @@ def return_muscle_settings(PreselectedMuscles=None):
 		for Muscle in MusclesToBeDeleted:
 			del(AllMuscleSettings[Muscle])
 	return(AllMuscleSettings)
+
 def return_primary_source(Settings):
 	assert Settings["Primary Source"]!=None, "No sources were found for this setting."
 	TotalSources = Settings["Sources"]
 	PrimarySource = Settings["Primary Source"]
 	assert PrimarySource in [settings.Source for settings in TotalSources], "Error! Primary Source is not referenced."
 	return(TotalSources[np.where([settings.Source == PrimarySource for settings in TotalSources])[0][0]])
+
 def unit_conversion(Params):
     assert hasattr(Params,"Units"), "Params must have attr 'Units' in order for unit_conversion to work."
     assert hasattr(Params,"Values"), "Params must have attr 'Values' in order for unit_conversion to work."
