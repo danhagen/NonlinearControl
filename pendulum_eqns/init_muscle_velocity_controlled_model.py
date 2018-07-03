@@ -1,5 +1,5 @@
-from integrator_backstepping_equations import *
-from IB_tendon_tension import *
+from pendulum_eqns.integrator_backstepping_equations import *
+from pendulum_eqns.initial_tension import *
 
 if g == 0:
 	MaxStep_MuscleVelocity = 0.05 # percentage of positive maximum.

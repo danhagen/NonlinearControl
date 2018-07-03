@@ -1,6 +1,6 @@
 import numpy as np
-from muscle_settings import *
-from MA_functions import *
+from pendulum_eqns.physiology.muscle_settings import *
+from pendulum_eqns.physiology.MA_functions import *
 
 AllMuscleSettings = return_muscle_settings(PreselectedMuscles=[5,6])
 

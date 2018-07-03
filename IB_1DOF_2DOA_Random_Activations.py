@@ -1,7 +1,8 @@
-from IB_random_activations import *
+from pendulum_eqns.sim_eqns_ActIB_random_activations import *
+from useful_functions import *
 
 TotalX,TotalU = run_N_sim_rand_act(NumberOfTrials=1)
-figs = plot_N_sim_rand_act(t,TotalX,TotalU,Return=True)
+figs = plot_N_sim_rand_act(Time,TotalX,TotalU,Return=True)
 
 plt.show()
 

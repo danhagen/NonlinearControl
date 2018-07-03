@@ -1,5 +1,5 @@
-from muscle_params_BIC_TRI_5_6 import *
-from musclutendon_equations import *
+from pendulum_eqns.physiology.muscle_params_BIC_TRI import *
+from pendulum_eqns.physiology.musclutendon_equations import *
 import numpy as np
 from scipy import integrate
 

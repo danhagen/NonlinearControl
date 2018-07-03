@@ -1,5 +1,5 @@
-from reference_trajectory_01 import *
-from pendulum_state_equations import *
+from pendulum_eqns.reference_trajectories._01 import *
+from pendulum_eqns.state_equations import *
 
 k1,k2,k3,k4 = 100,100,100,10
 

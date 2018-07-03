@@ -1,4 +1,4 @@
-from muscle_settings import *
+from pendulum_eqns.physiology.muscle_settings import *
 
 def MA_function(Parameters,θ_PS=None):
 	"""
@@ -14,7 +14,7 @@ def MA_function(Parameters,θ_PS=None):
 	"""
 
 	Parameters = return_primary_source(Parameters)
-	assert str(type(Parameters))=="<class 'muscle_settings.MA_Settings'>", "Parameters are not in correct namedtuple form. Should be <class 'muscle_settings.MA_Settings'> instead of " + str(type(Parameters))
+	assert str(type(Parameters))=="<class 'pendulum_eqns.physiology.muscle_settings.MA_Settings'>", "Parameters are not in correct namedtuple form. Should be <class 'pendulum_eqns.physiology.muscle_settings.MA_Settings'> instead of " + str(type(Parameters))
 	if θ_PS is None:
 		θ_PS = np.pi
 	else:
@@ -89,7 +89,7 @@ def MA_deriv(Parameters,θ_PS=None):
 	"""
 
 	Parameters = return_primary_source(Parameters)
-	assert str(type(Parameters))=="<class 'muscle_settings.MA_Settings'>", "Parameters are not in correct namedtuple form."
+	assert str(type(Parameters))=="<class 'pendulum_eqns.physiology.muscle_settings.MA_Settings'>", "Parameters are not in correct namedtuple form."
 	if θ_PS is None:
 		θ_PS = np.pi
 	else:
@@ -214,7 +214,7 @@ def MA_2nd_deriv(Parameters,θ_PS=None):
 
 	import numpy as np
 	Parameters = return_primary_source(Parameters)
-	assert str(type(Parameters))=="<class 'muscle_settings.MA_Settings'>", "Parameters are not in correct namedtuple form."
+	assert str(type(Parameters))=="<class 'pendulum_eqns.physiology.muscle_settings.MA_Settings'>", "Parameters are not in correct namedtuple form."
 	if θ_PS is None:
 		θ_PS = np.pi
 	else:

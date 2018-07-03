@@ -2,7 +2,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 from termcolor import cprint,colored
 from danpy.sb import dsb,get_terminal_width
-from IB_muscle_velocities import *
+from pendulum_eqns.init_muscle_velocity_controlled_model import *
+
+N_seconds = 1
+N = N_seconds*10000 + 1
+Time = np.linspace(0,N_seconds,N)
+dt = Time[1]-Time[0]
 
 def return_U_random_muscle_velocity(i,t:float,X,U,**kwargs):
 	"""
@@ -141,107 +146,12 @@ def return_U_random_muscle_velocity(i,t:float,X,U,**kwargs):
 	"""
 	euclid_dist = np.array(list(map(lambda u1,u2: np.sqrt(((U[0]-u1)/lo1)**2 + ((U[1]-u2)/lo2)**2),\
 							FeasibleInput1,FeasibleInput2)))
-    import ipdb; ipdb.set_trace()
+
 	feasible_index = np.where(euclid_dist <= \
 									(MaxStep*(t[i]>=100*dt) + \
 									 	10.0*MaxStep*(50*dt<=t[i]<100*dt) + \
 											50.0*MaxStep*(t[i]<50*dt)))
 	next_index = np.random.choice(feasible_index[0])
-	u1 = FeasibleInput1[next_index]
-	u2 = FeasibleInput2[next_index]
-	return(np.array([u1,u2]))
-
-def return_U_random_activations(i,t,X,U,**kwargs):
-	"""
-	Takes in current step (i), numpy.ndarray of time (t) of shape (N,), state numpy.ndarray (X) of shape (8,), and previous input numpy.ndarray (U) of shape (2,) and returns the input for this time step.
-
-	First attempt will see what happens when the activations are restricted to the positive real domain.
-
-	~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	**kwargs
-	~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-	1) Noise - must be an numpy.ndarray of shape (2,). Default is np.zeros((1,2)).
-
-	2) Seed - must be a scalar value. Default is None.
-
-	3) Bounds - must be a (2,2) list with each row in ascending order. Default is given by Activation_Bounds.
-
-	4) MaxStep - must be a scalar (int or float). Default is MaxStep_Activation.
-
-	"""
-	import random
-	import numpy as np
-	assert (np.shape(t) == (len(t),)) and (str(type(t)) == "<class 'numpy.ndarray'>"),\
-	 	"t must be a numpy.ndarray of shape (len(t),)."
-	assert np.shape(X) == (8,) and str(type(X)) == "<class 'numpy.ndarray'>", "X must be a (8,) numpy.ndarray"
-	assert np.shape(U) == (2,) and str(type(U)) == "<class 'numpy.ndarray'>", "U must be a (2,) numpy.ndarray"
-
-	dt = t[1]-t[0]
-
-	Noise = kwargs.get("Noise",np.zeros((2,)))
-	assert np.shape(Noise) == (2,) and str(type(Noise)) == "<class 'numpy.ndarray'>", "Noise must be a (2,) numpy.ndarray"
-
-	Seed = kwargs.get("Seed",None)
-	assert type(Seed) in [float,int] or Seed is None, "Seed must be a float or an int or None."
-	np.random.seed(Seed)
-
-	Bounds = kwargs.get("Bounds",Activation_Bounds)
-	assert type(Bounds) == list and np.shape(Bounds) == (2,2), "Bounds for Muscle Activation Control must be a (2,2) list."
-	assert Bounds[0][0]<Bounds[0][1],"Each set of bounds must be in ascending order."
-	assert Bounds[1][0]<Bounds[1][1],"Each set of bounds must be in ascending order."
-
-	MaxStep = kwargs.get("MaxStep",MaxStep_Activation)
-	assert type(MaxStep) in [int,float], "MaxStep for Muscle Activation Controller should be an int or float."
-
-	Coefficient1,Coefficient2,Constraint1 =\
-	 			return_constraint_variables_muscle_activation_driven(t[i],X)
-	assert Coefficient1!=0 and Coefficient2!=0, "Error with Coefficients. Shouldn't both be zero."
-	if Constraint1 < 0:
-		assert not(Coefficient1 > 0 and Coefficient2 > 0), "Infeasible activations. (Constraint1 < 0, Coefficient1 > 0, Coefficient2 > 0)"
-	if Constraint1 > 0:
-		assert not(Coefficient1 < 0 and Coefficient2 < 0), "Infeasible activations. (Constraint1 > 0, Coefficient1 < 0, Coefficient2 < 0)"
-
-	AllowableBounds_x = np.array([U[0]-MaxStep,U[0]+MaxStep])
-	AllowableBounds_y = np.array([U[1]-MaxStep,U[1]+MaxStep])
-
-	if Coefficient1 == 0:
-		LowerBound_x = max(Bounds[0][0],AllowbaleBounds_x[0])
-		UpperBound_x = min(Bounds[0][1],AllowbaleBounds_x[1])
-		FeasibleInput1 = (UpperBound_x-LowerBound_x)*np.random.rand(1000) + LowerBound_x
-		FeasibleInput2 = np.array([Constraint1/Coefficient2]*1000)
-	elif Coefficient2 == 0:
-		LowerBound_y = max(Bounds[1][0],AllowableBounds_y[0])
-		UpperBound_y = min(Bounds[1][1],AllowableBounds_y[1])
-		FeasibleInput1 = np.array([Constraint1/Coefficient1]*1000)
-		FeasibleInput2 = (UpperBound_y-LowerBound_y)*np.random.rand(1000) + LowerBound_y
-	else:
-		SortedAllowableBounds = np.sort([\
-									(Constraint1-Coefficient2*AllowableBounds_y[0])/Coefficient1,\
-									(Constraint1-Coefficient2*AllowableBounds_y[1])/Coefficient1\
-									])
-		SortedBounds = np.sort([(Constraint1-Coefficient2*Bounds[1][0])/Coefficient1,\
-									(Constraint1-Coefficient2*Bounds[1][1])/Coefficient1])
-		LowerBound_x = max(	Bounds[0][0],\
-		 					SortedBounds[0],\
-							AllowableBounds_x[0],\
-							SortedAllowableBounds[0]\
-						)
-		UpperBound_x = min(	Bounds[0][1],\
-		 					SortedBounds[1],\
-							AllowableBounds_x[1],\
-							SortedAllowableBounds[1]\
-						)
-		# if UpperBound_x < LowerBound_x: import ipdb; ipdb.set_trace()
-		assert UpperBound_x >= LowerBound_x, "Error generating bounds. Not feasible!"
-		FeasibleInput1 = (UpperBound_x-LowerBound_x)*np.random.rand(1000) + LowerBound_x
-		FeasibleInput2 = np.array([Constraint1/Coefficient2 - (Coefficient1/Coefficient2)*el \
-								for el in FeasibleInput1])
-	"""
-	Checking to see which inputs have the appropriate allowable step size.
-	"""
-
-	next_index = np.random.choice(range(1000))
 	u1 = FeasibleInput1[next_index]
 	u2 = FeasibleInput2[next_index]
 	return(np.array([u1,u2]))
@@ -263,10 +173,6 @@ def run_sim_rand_Vm(**kwargs):
     """
     thresh = kwargs.get("thresh",25)
     assert type(thresh)==int, "thresh should be an int as it is the number of attempts the program should run before stopping."
-
-    N = N_seconds*10000 + 1
-    Time = np.linspace(0,N_seconds,N)
-    dt = Time[1]-Time[0]
 
     AnotherIteration = True
     AttemptNumber = 1
@@ -304,16 +210,12 @@ def run_sim_rand_Vm(**kwargs):
         	AttemptNumber += 1
         	if AttemptNumber > thresh:
         		AnotherIteration=False
-        		return(np.zeros((8,N)),np.zeros((2,N)))
+        		return(np.zeros((4,N)),np.zeros((2,N)))
 
 def run_N_sim_rand_Vm(**kwargs):
 	NumberOfTrials = kwargs.get("NumberOfTrials",10)
 
-	N = N_seconds*10000 + 1
-	Time = np.linspace(0,N_seconds,N)
-	dt = Time[1]-Time[0]
-
-	TotalX = np.zeros((NumberOfTrials,8,N))
+	TotalX = np.zeros((NumberOfTrials,4,N))
 	TotalU = np.zeros((NumberOfTrials,2,N))
 	TerminalWidth = get_terminal_width()
 
@@ -329,7 +231,7 @@ def run_N_sim_rand_Vm(**kwargs):
 	i=0
 	NumberOfSuccessfulTrials = NumberOfTrials
 	while i < NumberOfSuccessfulTrials:
-		if (TotalX[i]==np.zeros((8,np.shape(TotalX)[2]))).all():
+		if (TotalX[i]==np.zeros((4,np.shape(TotalX)[2]))).all():
 			TotalX = np.delete(TotalX,i,0)
 			TotalU = np.delete(TotalU,i,0)
 			NumberOfSuccessfulTrials-=1
@@ -382,16 +284,16 @@ def plot_N_sim_rand_Vm(t,TotalX,TotalU,**kwargs):
 		)
 	for j in range(np.shape(TotalX)[0]):
 		if j == 0:
-			fig3 = plot_states(t,TotalX[j],Return=True,InputString = "Muscle Activations")
-			fig4 = plot_inputs(t,TotalU[j],Return=True,InputString = "Muscle Activations")
-			fig5 = plot_l_m_comparison(t,TotalX[j],MuscleLengths = TotalX[j,4:6,:],Return=True,InputString = "Muscle Activation")
+			fig3 = plot_states(t,TotalX[j],Return=True,InputString = "Muscle Velocities")
+			fig4 = plot_inputs(t,TotalU[j],Return=True,InputString = "Muscle Velocities")
+			fig5 = plot_l_m_comparison(t,TotalX[j],MuscleVelocities = TotalU[j,:,:],Return=True,InputString = "Muscle Velocities")
 		else:
-			fig3 = plot_states(t,TotalX[j],Return=True,InputString = "Muscle Activations",\
+			fig3 = plot_states(t,TotalX[j],Return=True,InputString = "Muscle Velocities",\
 									Figure=fig3)
-			fig4 = plot_inputs(t,TotalU[j],Return=True,InputString = "Muscle Activations", \
+			fig4 = plot_inputs(t,TotalU[j],Return=True,InputString = "Muscle Velocities", \
 									Figure = fig4)
-			fig5 = plot_l_m_comparison(t,TotalX[j],MuscleLengths = TotalX[j,4:6,:],Return=True,\
-											InputString = "Muscle Activation", Figure = fig5)
+			fig5 = plot_l_m_comparison(t,TotalX[j],MuscleVelocities = TotalU[j,:,:],Return=True,\
+											InputString = "Muscle Velocities", Figure = fig5)
 		statusbar.update(j)
 	if Return == True:
 		return([fig1,fig2,fig3,fig4,fig5])

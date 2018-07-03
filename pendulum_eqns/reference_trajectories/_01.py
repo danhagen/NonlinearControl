@@ -4,10 +4,10 @@ Amp = 7.5*np.pi/180
 Base = 90*np.pi/180
 Freq = 2*np.pi
 
-N_seconds = 1
-N = N_seconds*10000 + 1
-t = np.linspace(0,N_seconds,N)
-dt = t[1]-t[0]
+# N_seconds = 1
+# N = N_seconds*10000 + 1
+# t = np.linspace(0,N_seconds,N)
+# dt = t[1]-t[0]
 
 ### Reference Trajectory ###
 

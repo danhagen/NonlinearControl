@@ -1,10 +1,11 @@
-from integrator_backstepping_equations import *
+from pendulum_eqns.state_equations import *
+from pendulum_eqns.physiology.muscle_params_BIC_TRI import *
 
 if g == 0:
-	MaxStep_Tension = 0.03 # percentage of positive maximum.
+	MaxStep_Tension = 0.20*min(F_MAX1,F_MAX2) # percentage of positive maximum.
 	Tension_Bounds = [[0,F_MAX1],[0,F_MAX2]]
 else:
-	MaxStep_Tension = 0.01 # percentage of positive maximum.
+	MaxStep_Tension = 0.01**min(F_MAX1,F_MAX2) # percentage of positive maximum.
 	Tension_Bounds = [[0,F_MAX1],[0,0.10*F_MAX2]]
 
 def return_initial_tension(X_o,**kwargs):

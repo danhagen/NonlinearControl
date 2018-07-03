@@ -2,9 +2,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 from termcolor import cprint,colored
 from danpy.sb import dsb,get_terminal_width
-from IB_muscle_activation import *
+from pendulum_eqns.init_muscle_activation_controlled_model import *
 
-def return_U_random_activations(i,t,X,U,**kwargs):
+N_seconds = 1
+N = N_seconds*10000 + 1
+Time = np.linspace(0,N_seconds,N)
+dt = Time[1]-Time[0]
+
+def return_U_muscle_activation_nearest_neighbor(i,t,X,U,**kwargs):
 	"""
 	Takes in current step (i), numpy.ndarray of time (t) of shape (N,), state numpy.ndarray (X) of shape (8,), and previous input numpy.ndarray (U) of shape (2,) and returns the input for this time step.
 
@@ -44,19 +49,12 @@ def return_U_random_activations(i,t,X,U,**kwargs):
 	assert Bounds[0][0]<Bounds[0][1],"Each set of bounds must be in ascending order."
 	assert Bounds[1][0]<Bounds[1][1],"Each set of bounds must be in ascending order."
 
-	MaxStep = kwargs.get("MaxStep",MaxStep_Activation)
-	assert type(MaxStep) in [int,float], "MaxStep for Muscle Activation Controller should be an int or float."
-
-	Coefficient1,Coefficient2,Constraint1 =\
-	 			return_constraint_variables_muscle_activation_driven(t[i],X)
+	Coefficient1,Coefficient2,Constraint1 = return_constraint_variables(t[i],X)
 	assert Coefficient1!=0 and Coefficient2!=0, "Error with Coefficients. Shouldn't both be zero."
 	if Constraint1 < 0:
 		assert not(Coefficient1 > 0 and Coefficient2 > 0), "Infeasible activations. (Constraint1 < 0, Coefficient1 > 0, Coefficient2 > 0)"
 	if Constraint1 > 0:
 		assert not(Coefficient1 < 0 and Coefficient2 < 0), "Infeasible activations. (Constraint1 > 0, Coefficient1 < 0, Coefficient2 < 0)"
-
-	AllowableBounds_x = np.array([U[0]-MaxStep,U[0]+MaxStep])
-	AllowableBounds_y = np.array([U[1]-MaxStep,U[1]+MaxStep])
 
 	if Coefficient1 == 0:
 		LowerBound_x = max(Bounds[0][0],AllowbaleBounds_x[0])
@@ -69,37 +67,35 @@ def return_U_random_activations(i,t,X,U,**kwargs):
 		FeasibleInput1 = np.array([Constraint1/Coefficient1]*1000)
 		FeasibleInput2 = (UpperBound_y-LowerBound_y)*np.random.rand(1000) + LowerBound_y
 	else:
-		SortedAllowableBounds = np.sort([\
-									(Constraint1-Coefficient2*AllowableBounds_y[0])/Coefficient1,\
-									(Constraint1-Coefficient2*AllowableBounds_y[1])/Coefficient1\
-									])
 		SortedBounds = np.sort([(Constraint1-Coefficient2*Bounds[1][0])/Coefficient1,\
 									(Constraint1-Coefficient2*Bounds[1][1])/Coefficient1])
 		LowerBound_x = max(	Bounds[0][0],\
-		 					SortedBounds[0],\
-							AllowableBounds_x[0],\
-							SortedAllowableBounds[0]\
+		 					SortedBounds[0]\
 						)
 		UpperBound_x = min(	Bounds[0][1],\
-		 					SortedBounds[1],\
-							AllowableBounds_x[1],\
-							SortedAllowableBounds[1]\
+		 					SortedBounds[1]\
 						)
 		# if UpperBound_x < LowerBound_x: import ipdb; ipdb.set_trace()
 		assert UpperBound_x >= LowerBound_x, "Error generating bounds. Not feasible!"
-		FeasibleInput1 = (UpperBound_x-LowerBound_x)*np.random.rand(1000) + LowerBound_x
-		FeasibleInput2 = np.array([Constraint1/Coefficient2 - (Coefficient1/Coefficient2)*el \
-								for el in FeasibleInput1])
+		# FeasibleInput1 = (UpperBound_x-LowerBound_x)*np.random.rand(1000) + LowerBound_x
+		# FeasibleInput2 = np.array([Constraint1/Coefficient2 - (Coefficient1/Coefficient2)*el \
+		# 						for el in FeasibleInput1])
+		FeasibleInput1 = np.ones(1000)*(Coefficient2*(Coefficient2*U[0]-Coefficient1*U[1])+Coefficient1*Constraint1)/(Coefficient1**2 + Coefficient2**2)
+		FeasibleInput2 = np.ones(1000)*(Coefficient1*(-Coefficient2*U[0]+Coefficient1*U[1])+Coefficient2*Constraint1)/(Coefficient1**2 + Coefficient2**2)
+		assert LowerBound_x<=FeasibleInput1[0]<=UpperBound_x, "No Feasible transition. Closest transition greater than maximum allowable transition."
 	"""
 	Checking to see which inputs have the appropriate allowable step size.
 	"""
-
-	next_index = np.random.choice(range(1000))
-	u1 = FeasibleInput1[next_index]
-	u2 = FeasibleInput2[next_index]
+	# euclid_dist = np.array(list(map(lambda x,y: np.sqrt((U[0]-x)**2+(U[1]-y)**2),\
+	# 								FeasibleInput1,FeasibleInput2)))
+	# next_index, = np.where(euclid_dist==min(euclid_dist))
+	# u1 = FeasibleInput1[next_index[0]]
+	# u2 = FeasibleInput2[next_index[0]]
+	u1 = FeasibleInput1[0]
+	u2 = FeasibleInput2[0]
 	return(np.array([u1,u2]))
 
-def run_sim_rand_act(**kwargs):
+def run_sim_MAV(**kwargs):
 	"""
 	Runs one simulation for MINIMUM ACTIVATION TRANSITION control.
 
@@ -116,10 +112,6 @@ def run_sim_rand_act(**kwargs):
 	"""
 	thresh = kwargs.get("thresh",25)
 	assert type(thresh)==int, "thresh should be an int as it is the number of attempts the program should run before stopping."
-
-	N = N_seconds*10000 + 1
-	Time = np.linspace(0,N_seconds,N)
-	dt = Time[1]-Time[0]
 
 	AnotherIteration = True
 	AttemptNumber = 1
@@ -149,9 +141,9 @@ def run_sim_rand_act(**kwargs):
 
 		try:
 			cprint("Attempt #" + str(int(AttemptNumber)) + ":\n", 'green')
-			statusbar = dsb(0,N-1,title=run_sim_rand_act.__name__)
+			statusbar = dsb(0,N-1,title=run_sim_MAV.__name__)
 			for i in range(N-1):
-				U[:,i+1] = return_U_random_activations(i,Time,X[:,i],U[:,i],Noise = NoiseArray[:,i])
+				U[:,i+1] = return_U_muscle_activation_nearest_neighbor(i,Time,X[:,i],U[:,i],Noise = NoiseArray[:,i])
 				X[:,i+1] = X[:,i] + dt*np.array([	dX1_dt(X[:,i]),\
 													dX2_dt(X[:,i]),\
 													dX3_dt(X[:,i]),\
@@ -173,12 +165,8 @@ def run_sim_rand_act(**kwargs):
 				AnotherIteration=False
 				return(np.zeros((8,N)),np.zeros((2,N)))
 
-def run_N_sim_rand_act(**kwargs):
+def run_N_sim_MAV(**kwargs):
 	NumberOfTrials = kwargs.get("NumberOfTrials",10)
-
-	N = N_seconds*10000 + 1
-	Time = np.linspace(0,N_seconds,N)
-	dt = Time[1]-Time[0]
 
 	TotalX = np.zeros((NumberOfTrials,8,N))
 	TotalU = np.zeros((NumberOfTrials,2,N))
@@ -191,7 +179,7 @@ def run_N_sim_rand_act(**kwargs):
 			" "*int(TerminalWidth/2 - len(TrialTitle)/2)
 			+ colored(TrialTitle,'white',attrs=["underline","bold"])
 			)
-		TotalX[j],TotalU[j] = run_sim_rand_act(**kwargs)
+		TotalX[j],TotalU[j] = run_sim_MAV(**kwargs)
 
 	i=0
 	NumberOfSuccessfulTrials = NumberOfTrials
@@ -214,14 +202,14 @@ def run_N_sim_rand_act(**kwargs):
 	)
 	return(TotalX,TotalU)
 
-def plot_N_sim_rand_act(t,TotalX,TotalU,**kwargs):
+def plot_N_sim_MAV(t,TotalX,TotalU,**kwargs):
 	Return = kwargs.get("Return",False)
 	assert type(Return) == bool, "Return should either be True or False"
 
 	fig1 = plt.figure(figsize = (9,7))
 	fig1_title = "Underdetermined Forced-Pendulum Example"
 	plt.title(fig1_title,fontsize=16,color='gray')
-	statusbar = dsb(0,np.shape(TotalX)[0],title=(plot_N_sim_rand_act.__name__ + " (" + fig1_title +")"))
+	statusbar = dsb(0,np.shape(TotalX)[0],title=(plot_N_sim_MAV.__name__ + " (" + fig1_title +")"))
 	for j in range(np.shape(TotalX)[0]):
 		plt.plot(t,(TotalX[j,0,:])*180/np.pi,'0.70',lw=2)
 		statusbar.update(j)
@@ -234,7 +222,7 @@ def plot_N_sim_rand_act(t,TotalX,TotalU,**kwargs):
 	fig2 = plt.figure(figsize = (9,7))
 	fig2_title = "Error vs. Time"
 	plt.title(fig2_title)
-	statusbar.reset(title=(plot_N_sim_rand_act.__name__ + " (" + fig2_title +")"))
+	statusbar.reset(title=(plot_N_sim_MAV.__name__ + " (" + fig2_title +")"))
 	for j in range(np.shape(TotalX)[0]):
 		plt.plot(t, (r(t)-TotalX[j,0,:])*180/np.pi,color='0.70')
 		statusbar.update(j)
@@ -243,7 +231,7 @@ def plot_N_sim_rand_act(t,TotalX,TotalU,**kwargs):
 
 	statusbar.reset(
 		title=(
-			plot_N_sim_rand_act.__name__
+			plot_N_sim_MAV.__name__
 			+ " (Plotting States, Inputs, and Muscle Length Comparisons)"
 			)
 		)
