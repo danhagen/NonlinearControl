@@ -1,10 +1,10 @@
 from pendulum_eqns.sim_eqns_ActIB_minimize_activation_velocity import *
 from useful_functions import *
 
-TotalX,TotalU = run_N_sim_MAV(NumberOfTrials=1)
+TotalX,TotalU = run_N_sim_MAV(NumberOfTrials=3)
 figs = plot_N_sim_MAV(Time,TotalX,TotalU,Return=True)
 
-plt.show()
+# plt.show()
 
-# save_figures("1DOF_2DOA_Minimum_Activation_Velocity")
-# plt.close('all')
+save_figures("output_figures/minimum_activation_velocity/" + "1DOF_2DOA_v1.0")
+plt.close('all')

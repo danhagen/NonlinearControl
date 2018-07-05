@@ -173,16 +173,19 @@ def plot_states(t,X,**kwargs):
 	else:
 		assert type(InputString)==str, "InputString must be a string"
 		DescriptiveTitle = InputString + " Driven"
-
+	if NumRows == 1:
+		FigShape = (NumColumns,)
+	else:
+		FigShape = (NumRows,NumColumns)
 	Figure = kwargs.get("Figure",None)
 	assert (Figure is None) or \
 				(	(type(Figure)==tuple) and \
 					(str(type(Figure[0]))=="<class 'matplotlib.figure.Figure'>") and\
 					(np.array([str(type(ax))=="<class 'matplotlib.axes._subplots.AxesSubplot'>" \
 						for ax in Figure[1].flatten()]).all()) and \
-					(Figure[1].shape == (NumRows,NumColumns))\
+					(Figure[1].shape == FigShape)\
 				),\
-				 	"Figure can either be left blank (None) or it must be constructed from data that has the same shape as X."
+				 	("Figure can either be left blank (None) or it must be constructed from data that has the same shape as X.\ntype(Figure) = " + str(type(Figure)) + "\ntype(Figure[0]) = " + str(type(Figure[0])) + "\nFigure[1].shape = " + str(Figure[1].shape) + " instead of (" + str(NumRows) + "," + str(NumColumns) + ")" + "\ntype(Figure[1].flatten()[0]) = " + str(type(Figure[1].flatten()[0])))
 	if Figure is None:
 		fig, axes = plt.subplots(NumRows,NumColumns,figsize=(3*NumColumns,2*NumRows + 2))
 		plt.subplots_adjust(top=0.85,bottom=0.15,left=0.075,right=0.975)
@@ -215,7 +218,10 @@ def plot_states(t,X,**kwargs):
 		fig = Figure[0]
 		axes = Figure[1]
 		for i in range(NumStates):
-			axes[RowNumber[i],ColumnNumber[i]].plot(t,X[i,:])
+			if NumRows != 1:
+				axes[RowNumber[i],ColumnNumber[i]].plot(t,X[i,:])
+			else:
+				axes[ColumnNumber[i]].plot(t,X[i,:])
 	X[:2,:] = np.pi*X[:2,:]/180
 	if Return == True:
 		return((fig,axes))
