@@ -89,7 +89,31 @@ def return_random_initial_muscle_lengths_and_activations(InitialTension,**kwargs
 def find_viable_initial_values(**kwargs):
 	"""
 	This function returns initial conditions for the system that starts from rest. (Ex. pendulum_eqns.reference_trajectories._01)
+
+	~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	**kwargs
+
+	~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	1) FixedInitialTension - Must be a (2,1) numpy.ndarray. Run find_initial_tension outside of the loop for a given seed and then feed it through the pipeline.
+
+	2) ReturnAll - Can return all initial values for a given tension level. Will be fed through to return_random_initial_muscle_lengths_and_activations.
+
+	3) Seed - Can see the random tension generated. When FixedInitialTension is provided, this seed will apply only to the initial conditions for activation and muscle length.
 	"""
+	FixedInitialTension = kwargs.get("FixedInitialTension",None)
+	assert (FixedInitialTension is None) or \
+			(str(type(FixedInitialTension)) == "<class 'numpy.ndarray'>"
+			and np.shape(FixedInitialTension) == (2,1)),\
+		(
+		"FixedInitialTension must either be None (Default) or a (2,1) numpy.ndarray."
+		+ "\nCurrent type: "
+		+ str(type(FixedInitialTension))
+		+ "\nCurrent shape: "
+		+ str(np.shape(FixedInitialTension))
+		)
+
 	ReturnAll = kwargs.get("ReturnAll",False)
 	assert type(ReturnAll)==bool, "ReturnAll must be a bool."
 
@@ -98,7 +122,10 @@ def find_viable_initial_values(**kwargs):
 	np.random.seed(Seed)
 
 	X_o = np.array([Amp+Base,0])
-	T = return_initial_tension(X_o)
+	if FixedInitialTension is None:
+		T = return_initial_tension(X_o)
+	else:
+		T = FixedInitialTension
 	L1,U1,L2,U2 = return_random_initial_muscle_lengths_and_activations(T,**kwargs)
 	rand_index = np.random.choice(len(L1),2)
 
