@@ -5,7 +5,7 @@ X_o = np.array([r(0),dr(0)])
 InitialTension = return_initial_tension(X_o)
 
 TotalX,TotalU = run_N_sim_gauss_act(NumberOfTrials=100,FixedInitialTension=InitialTension)
-figs = plot_N_sim_gauss_act(Time,TotalX,TotalU,Return=True)
+figs,Error = plot_N_sim_gauss_act(Time,TotalX,TotalU,Return=True,ReturnError=True)
 
 # plt.show()
 

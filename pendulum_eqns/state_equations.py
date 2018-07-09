@@ -340,6 +340,9 @@ def plot_l_m_comparison(t,X,**kwargs):
 	V_m = kwargs.get("MuscleVelocities",None)
 	assert (V_m is None) or (str(type(V_m))=="<class 'numpy.ndarray'>" and np.shape(V_m)==(2,len(t))), "V_m must either be a numpy.ndarray of size (2,N) or left as None (Default)."
 
+	ReturnError = kwargs.get("ReturnError",False)
+	assert type(ReturnError)==bool, "ReturnError must be either True or False."
+
 	assert L_m is not None or V_m is not None, "Error! Need to input some length/velocity measurement for the muscles."
 
 	if L_m is None:
@@ -356,8 +359,9 @@ def plot_l_m_comparison(t,X,**kwargs):
 	Note: X must be transposed in order to run through map()
 	"""
 	Figure = kwargs.get("Figure",None)
-	assert (Figure is None) or \
-				(	(type(Figure)==tuple) and \
+	assert (Figure is None) \
+				or (
+					(type(Figure)==tuple) and \
 					(str(type(Figure[0]))=="<class 'matplotlib.figure.Figure'>") and\
 					(np.array([str(type(ax))=="<class 'matplotlib.axes._subplots.AxesSubplot'>" \
 						for ax in Figure[1].flatten()]).all()) and \
@@ -368,46 +372,58 @@ def plot_l_m_comparison(t,X,**kwargs):
 	if Figure is None:
 		fig, axes = plt.subplots(2,2,figsize = (14,7))
 		plt.suptitle(DescriptiveTitle,Fontsize=20,y=0.975)
+		l_m1_by_MTU_approximation = integrate.cumtrapz(
+										np.array(list(map(lambda X: v_MTU1(X),X.T))),\
+										t,initial=0
+									) \
+									+ np.ones(len(t))*l_m1[0]
+		l_m2_by_MTU_approximation = integrate.cumtrapz(
+										np.array(list(map(lambda X: v_MTU2(X),X.T))),\
+										t,initial=0
+									) \
+									+ np.ones(len(t))*l_m2[0]
 
-		axes[0,0].plot(t,integrate.cumtrapz(np.array(list(map(lambda X: v_MTU1(X),X.T))),\
-							t,initial=0) + np.ones(len(t))*l_m1[0], '0.70')
+		axes[0,0].plot(t,l_m1_by_MTU_approximation, '0.70')
 		axes[0,0].plot(t,l_m1)
 		axes[0,0].set_ylabel(r"$l_{m,1}/l_{MTU,1}$ (m)")
 		axes[0,0].set_xlabel("Time (s)")
 
-		axes[0,1].plot(t,l_m1-integrate.cumtrapz(np.array(list(map(lambda X: v_MTU1(X),X.T))),\
-							t,initial=0) - np.ones(len(t))*l_m1[0])
+		axes[0,1].plot(t,l_m1-l_m1_by_MTU_approximation)
 		axes[0,1].set_ylabel("Error (m)")
 		axes[0,1].set_xlabel("Time (s)")
 
-		axes[1,0].plot(t,integrate.cumtrapz(np.array(list(map(lambda X: v_MTU2(X),X.T))),\
-							t,initial=0) + np.ones(len(t))*l_m2[0], '0.70')
+		axes[1,0].plot(t,l_m2_by_MTU_approximation, '0.70')
 		axes[1,0].plot(t,l_m2)
 		axes[1,0].set_ylabel(r"$l_{m,2}/l_{MTU,2}$ (m)")
 		axes[1,0].set_xlabel("Time (s)")
 
-		axes[1,1].plot(t,l_m2-integrate.cumtrapz(np.array(list(map(lambda X: v_MTU2(X),X.T))),\
-							t,initial=0) - np.ones(len(t))*l_m2[0])
+		axes[1,1].plot(t,l_m2-l_m2_by_MTU_approximation)
 		axes[1,1].set_ylabel("Error (m)")
 		axes[1,1].set_xlabel("Time (s)")
 	else:
 		fig = Figure[0]
 		axes = Figure[1]
-		axes[0,0].plot(t,integrate.cumtrapz(np.array(list(map(lambda X: v_MTU1(X),X.T))),\
-							t,initial=0) + np.ones(len(t))*l_m1[0], '0.70')
+		axes[0,0].plot(t,l_m1_by_MTU_approximation, '0.70')
 		axes[0,0].plot(t,l_m1)
 
-		axes[0,1].plot(t,l_m1-integrate.cumtrapz(np.array(list(map(lambda X: v_MTU1(X),X.T))),\
-							t,initial=0) - np.ones(len(t))*l_m1[0])
+		axes[0,1].plot(t,l_m1-l_m1_by_MTU_approximation)
 
-		axes[1,0].plot(t,integrate.cumtrapz(np.array(list(map(lambda X: v_MTU2(X),X.T))),\
-							t,initial=0) + np.ones(len(t))*l_m2[0], '0.70')
+		axes[1,0].plot(t,l_m2_by_MTU_approximation, '0.70')
 		axes[1,0].plot(t,l_m2)
 
-		axes[1,1].plot(t,l_m2-integrate.cumtrapz(np.array(list(map(lambda X: v_MTU2(X),X.T))),\
-							t,initial=0) - np.ones(len(t))*l_m2[0])
+		axes[1,1].plot(t,l_m2-l_m2_by_MTU_approximation)
 
 	if Return == True:
-		return((fig,axes))
+		if ReturnError == True:
+			return(
+				(fig,axes),
+				[l_m1-l_m1_by_MTU_approximation,l_m2-l_m2_by_MTU_approximation]
+				)
+		else:
+			return((fig,axes))
 	else:
-		plt.show()
+		if ReturnError == True:
+			plt.show()
+			return([l_m1-l_m1_by_MTU_approximation,l_m2-l_m2_by_MTU_approximation])
+		else:
+			plt.show()

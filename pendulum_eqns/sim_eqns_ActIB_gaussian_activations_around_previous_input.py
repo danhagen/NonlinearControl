@@ -98,7 +98,7 @@ def return_U_gaussian_activations_nearby(i,t,X,U,**kwargs):
         UpperBound_y = SortedBounds_y[1]
 
     mu = 0
-    sigma = 0.0003125
+    sigma = 0.000625
     Feasible = False
     count = 0
     while Feasible == False:
@@ -249,6 +249,9 @@ def plot_N_sim_gauss_act(t,TotalX,TotalU,**kwargs):
 	Return = kwargs.get("Return",False)
 	assert type(Return) == bool, "Return should either be True or False"
 
+    ReturnError = kwargs.get("ReturnError",False)
+    assert type(ReturnError)==bool, "ReturnError should be either True or False."
+
 	fig1 = plt.figure(figsize = (9,7))
 	fig1_title = "Underdetermined Forced-Pendulum Example"
 	plt.title(fig1_title,fontsize=16,color='gray')
@@ -282,16 +285,34 @@ def plot_N_sim_gauss_act(t,TotalX,TotalU,**kwargs):
 		if j == 0:
 			fig3 = plot_states(t,TotalX[j],Return=True,InputString = "Muscle Activations")
 			fig4 = plot_inputs(t,TotalU[j],Return=True,InputString = "Muscle Activations")
-			fig5 = plot_l_m_comparison(t,TotalX[j],MuscleLengths = TotalX[j,4:6,:],Return=True,InputString = "Muscle Activation")
+			fig5,Error = plot_l_m_comparison(
+                    t,TotalX[j],MuscleLengths=TotalX[j,4:6,:],
+                    Return=True,InputString="Muscle Activation",ReturnError=True
+                    )
+            Error1 = Error[0][np.newaxis,:]
+            Error2 = Error[1][np.newaxis,:]
 		else:
 			fig3 = plot_states(t,TotalX[j],Return=True,InputString = "Muscle Activations",\
 									Figure=fig3)
 			fig4 = plot_inputs(t,TotalU[j],Return=True,InputString = "Muscle Activations", \
 									Figure = fig4)
-			fig5 = plot_l_m_comparison(t,TotalX[j],MuscleLengths = TotalX[j,4:6,:],Return=True,\
-											InputString = "Muscle Activation", Figure = fig5)
+			fig5,Error = plot_l_m_comparison(
+                    t,TotalX[j],MuscleLengths=TotalX[j,4:6,:],
+                    Return=True,InputString="Muscle Activation",ReturnError=True,
+                    Figure=fig5
+                    )
+            Error1 = np.concatenate([Error1,Error[0][np.newaxis,:]],axis=0)
+            Error2 = np.concatenate([Error2,Error[1][np.newaxis,:]],axis=0)
 		statusbar.update(j)
+
 	if Return == True:
-		return([fig1,fig2,fig3,fig4,fig5])
+        if ReturnError == True:
+            return([fig1,fig2,fig3,fig4,fig5],[Error1,Error2])
+        else:
+            return([fig1,fig2,fig3,fig4,fig5])
 	else:
-		plt.show()
+        if ReturnError == True:
+            plt.show()
+            return([Error1,Error2])
+        else:
+            plt.show()
