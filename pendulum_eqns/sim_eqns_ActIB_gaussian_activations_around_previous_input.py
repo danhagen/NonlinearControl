@@ -246,71 +246,71 @@ def run_N_sim_gauss_act(**kwargs):
     return(TotalX,TotalU)
 
 def plot_N_sim_gauss_act(t,TotalX,TotalU,**kwargs):
-	Return = kwargs.get("Return",False)
-	assert type(Return) == bool, "Return should either be True or False"
+    Return = kwargs.get("Return",False)
+    assert type(Return) == bool, "Return should either be True or False"
 
     ReturnError = kwargs.get("ReturnError",False)
     assert type(ReturnError)==bool, "ReturnError should be either True or False."
 
-	fig1 = plt.figure(figsize = (9,7))
-	fig1_title = "Underdetermined Forced-Pendulum Example"
-	plt.title(fig1_title,fontsize=16,color='gray')
-	statusbar = dsb(0,np.shape(TotalX)[0],title=(plot_N_sim_gauss_act.__name__ + " (" + fig1_title +")"))
-	for j in range(np.shape(TotalX)[0]):
-		plt.plot(t,(TotalX[j,0,:])*180/np.pi,'0.70',lw=2)
-		statusbar.update(j)
-	plt.plot(np.linspace(0,t[-1],1001),\
-			(r(np.linspace(0,t[-1],1001)))*180/np.pi,\
-				'r')
-	plt.xlabel("Time (s)")
-	plt.ylabel("Desired Measure (Deg)")
+    fig1 = plt.figure(figsize = (9,7))
+    fig1_title = "Underdetermined Forced-Pendulum Example"
+    plt.title(fig1_title,fontsize=16,color='gray')
+    statusbar = dsb(0,np.shape(TotalX)[0],title=(plot_N_sim_gauss_act.__name__ + " (" + fig1_title +")"))
+    for j in range(np.shape(TotalX)[0]):
+        plt.plot(t,(TotalX[j,0,:])*180/np.pi,'0.70',lw=2)
+        statusbar.update(j)
+    plt.plot(np.linspace(0,t[-1],1001),\
+        	(r(np.linspace(0,t[-1],1001)))*180/np.pi,\
+               'r')
+    plt.xlabel("Time (s)")
+    plt.ylabel("Desired Measure (Deg)")
 
-	fig2 = plt.figure(figsize = (9,7))
-	fig2_title = "Error vs. Time"
-	plt.title(fig2_title)
-	statusbar.reset(title=(plot_N_sim_gauss_act.__name__ + " (" + fig2_title +")"))
-	for j in range(np.shape(TotalX)[0]):
-		plt.plot(t, (r(t)-TotalX[j,0,:])*180/np.pi,color='0.70')
-		statusbar.update(j)
-	plt.xlabel("Time (s)")
-	plt.ylabel("Error (Deg)")
+    fig2 = plt.figure(figsize = (9,7))
+    fig2_title = "Error vs. Time"
+    plt.title(fig2_title)
+    statusbar.reset(title=(plot_N_sim_gauss_act.__name__ + " (" + fig2_title +")"))
+    for j in range(np.shape(TotalX)[0]):
+        plt.plot(t, (r(t)-TotalX[j,0,:])*180/np.pi,color='0.70')
+        statusbar.update(j)
+    plt.xlabel("Time (s)")
+    plt.ylabel("Error (Deg)")
 
-	statusbar.reset(
-		title=(
-			plot_N_sim_gauss_act.__name__
-			+ " (Plotting States, Inputs, and Muscle Length Comparisons)"
-			)
-		)
-	for j in range(np.shape(TotalX)[0]):
-		if j == 0:
-			fig3 = plot_states(t,TotalX[j],Return=True,InputString = "Muscle Activations")
-			fig4 = plot_inputs(t,TotalU[j],Return=True,InputString = "Muscle Activations")
-			fig5,Error = plot_l_m_comparison(
-                    t,TotalX[j],MuscleLengths=TotalX[j,4:6,:],
-                    Return=True,InputString="Muscle Activation",ReturnError=True
-                    )
+    statusbar.reset(
+        title=(
+        	plot_N_sim_gauss_act.__name__
+        	+ " (Plotting States, Inputs, and Muscle Length Comparisons)"
+        	)
+        )
+    for j in range(np.shape(TotalX)[0]):
+        if j == 0:
+            fig3 = plot_states(t,TotalX[j],Return=True,InputString = "Muscle Activations")
+            fig4 = plot_inputs(t,TotalU[j],Return=True,InputString = "Muscle Activations")
+            fig5,Error = plot_l_m_comparison(
+            t,TotalX[j],MuscleLengths=TotalX[j,4:6,:],
+            Return=True,InputString="Muscle Activation",ReturnError=True
+            )
             Error1 = Error[0][np.newaxis,:]
             Error2 = Error[1][np.newaxis,:]
-		else:
-			fig3 = plot_states(t,TotalX[j],Return=True,InputString = "Muscle Activations",\
-									Figure=fig3)
-			fig4 = plot_inputs(t,TotalU[j],Return=True,InputString = "Muscle Activations", \
-									Figure = fig4)
-			fig5,Error = plot_l_m_comparison(
-                    t,TotalX[j],MuscleLengths=TotalX[j,4:6,:],
-                    Return=True,InputString="Muscle Activation",ReturnError=True,
-                    Figure=fig5
-                    )
+        else:
+            fig3 = plot_states(t,TotalX[j],Return=True,InputString = "Muscle Activations",\
+            	              Figure=fig3)
+            fig4 = plot_inputs(t,TotalU[j],Return=True,InputString = "Muscle Activations", \
+            	              Figure = fig4)
+            fig5,Error = plot_l_m_comparison(
+            t,TotalX[j],MuscleLengths=TotalX[j,4:6,:],
+            Return=True,InputString="Muscle Activation",ReturnError=True,
+            Figure=fig5
+            )
             Error1 = np.concatenate([Error1,Error[0][np.newaxis,:]],axis=0)
             Error2 = np.concatenate([Error2,Error[1][np.newaxis,:]],axis=0)
-		statusbar.update(j)
+        statusbar.update(j)
 
-	if Return == True:
+    if Return == True:
         if ReturnError == True:
             return([fig1,fig2,fig3,fig4,fig5],[Error1,Error2])
         else:
             return([fig1,fig2,fig3,fig4,fig5])
-	else:
+    else:
         if ReturnError == True:
             plt.show()
             return([Error1,Error2])

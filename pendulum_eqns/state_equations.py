@@ -403,6 +403,16 @@ def plot_l_m_comparison(t,X,**kwargs):
 	else:
 		fig = Figure[0]
 		axes = Figure[1]
+		l_m1_by_MTU_approximation = integrate.cumtrapz(
+										np.array(list(map(lambda X: v_MTU1(X),X.T))),\
+										t,initial=0
+									) \
+									+ np.ones(len(t))*l_m1[0]
+		l_m2_by_MTU_approximation = integrate.cumtrapz(
+										np.array(list(map(lambda X: v_MTU2(X),X.T))),\
+										t,initial=0
+									) \
+									+ np.ones(len(t))*l_m2[0]
 		axes[0,0].plot(t,l_m1_by_MTU_approximation, '0.70')
 		axes[0,0].plot(t,l_m1)
 

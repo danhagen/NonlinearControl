@@ -73,23 +73,17 @@ dr1_dθ = np.array(dR_Transpose[:,1].T)[0][0]
 d2r1_dθ2 = np.array(d2R_Transpose[:,1].T)[0][0]
 
 def R1(X):
-	global r_1
-	r_1 = r1(X[0])
-	return(r_1) #
+	return(r1(X[0])) #
 def dR1_dx1(X):
 	return(dr1_dθ(X[0]))
 def d2R1_dx12(X):
 	return(d2r1_dθ2(X[0]))
 def KT_1(X):
-	global kt_1
-	kt_1 = (F_MAX1*cT/lTo1)*(1-np.exp(-X[2]/(F_MAX1*cT*kT)))
-	return(kt_1) # NOT NORMALIZED (in N/m)
+	return((F_MAX1*cT/lTo1)*(1-np.exp(-X[2]/(F_MAX1*cT*kT)))) # NOT NORMALIZED (in N/m)
 def dKT_1_dx3(X):
 	return((1/(kT*lTo1))*np.exp(-X[2]/(F_MAX1*cT*kT))) # NOT NORMALIZED (in N/m)
 def FLV_1(X):
-	global flv_1
-	flv_1 = FL(X[4],lo1)*FV(X[4],X[6],lo1)
-	return(flv_1)
+	return(FL(X[4],lo1)*FV(X[4],X[6],lo1))
 def F_PE1_1(X):
 	return(c_1*k_1*np.log(np.exp((X[4]/(lo1*L_CE_max_1) - Lr1)/k_1) + 1) + η*(X[6]/lo1))
 
@@ -128,23 +122,17 @@ dr2_dθ = np.array(dR_Transpose[:,1].T)[0][1]
 d2r2_dθ2 = np.array(d2R_Transpose[:,1].T)[0][1]
 
 def R2(X):
-	global r_2
-	r_2 = r2(X[0])
-	return(r_2)
+	return(r2(X[0]))
 def dR2_dx1(X):
 	return(dr2_dθ(X[0]))
 def d2R2_dx12(X):
 	return(d2r2_dθ2(X[0]))
 def KT_2(X):
-	global kt_2
-	kt_2 = (F_MAX2*cT/lTo2)*(1-np.exp(-X[3]/(F_MAX2*cT*kT)))
-	return(kt_2) # NOT NORMALIZED (in N/m)
+	return((F_MAX2*cT/lTo2)*(1-np.exp(-X[3]/(F_MAX2*cT*kT)))) # NOT NORMALIZED (in N/m)
 def dKT_2_dx4(X):
 	return((1/(kT*lTo2))*np.exp(-X[3]/(F_MAX2*cT*kT))) # NOT NORMALIZED (in N/m)
 def FLV_2(X):
-	global flv_2
-	flv_2 = FL(X[5],lo2)*FV(X[5],X[7],lo2)
-	return(flv_2)
+	return(FL(X[5],lo2)*FV(X[5],X[7],lo2))
 def F_PE1_2(X):
 	return(c_1*k_1*np.log(np.exp((X[5]/(lo2*L_CE_max_2) - Lr1)/k_1) + 1) + η*(X[7]/lo2))
 
