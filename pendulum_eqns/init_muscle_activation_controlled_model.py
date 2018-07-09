@@ -7,7 +7,7 @@ Activation_Bounds = [[0,1],[0,1]]
 def return_constraint_variables(t,X):
 	Coefficient1 = c2*c3*c6*R1(X)*KT_1(X)*FLV_1(X)
 	Coefficient2 = c2*c4*c10*R2(X)*KT_2(X)*FLV_2(X)
-	Constraint = A4(t,X)
+	Constraint = A4(t,X,InitGlobals=True)
 	return(Coefficient1,Coefficient2,Constraint)
 
 def return_random_initial_muscle_lengths_and_activations(InitialTension,**kwargs):

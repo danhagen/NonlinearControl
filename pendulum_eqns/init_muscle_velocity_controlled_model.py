@@ -11,7 +11,7 @@ else:
 def return_constraint_variables_muscle_velocity_driven(t,X):
 	Coefficient1 = c2*c3*R1(X)*KT_1(X)
 	Coefficient2 = c2*c4*R2(X)*KT_2(X)
-	Constraint = A3(t,X)
+	Constraint = A3(t,X,InitGlobals=True)
 	return(Coefficient1,Coefficient2,Constraint)
 
 def find_initial_values_Vm(**kwargs):

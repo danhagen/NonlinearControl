@@ -53,7 +53,13 @@ def dZ3(t,X):
 					+ c2*r_1*kt_1*v_MTU_1 - c2*c3*r_1*kt_1*X[6] \
 						+ c2*r_2*kt_2*v_MTU_2 - c2*c4*r_2*kt_2*X[7] \
 							- dA2(t,X))
-def A3(t,X):
+def A3(t,X,**kwargs):
+	InitGlobals = kwargs.get("InitGlobals",False)
+	assert type(InitGlobals)==bool, "InitGlobals must be either True or False."
+
+	if InitGlobals == True:
+		init_globals_muscle_velocity_controller(X)
+
 	global r_1,kt_1
 	global r_2,kt_2
 	global dr1_dx1
@@ -113,7 +119,7 @@ def dZ4(t,X,U):
 					+ c2*c4*R2(X)*KT_2(X)*(c9*X[3] - c10*F_PE1_2(X) - c11*X[7] + c12*X[7]**2/X[5]) \
 					 	- c2*c4*c10*R2(X)*KT_2(X)*FLV_2(X)*U[1] \
 			- dA3(t,X))
-def A4(t,X):
+def A4(t,X,**kwargs):
 	"""
 	c2*c3*c6*R1(X)*KT_1(X)*FLV_1(X)*U[0] \
 		+ c2*c4*c10*R2(X)*KT_2(X)*FLV_2(X)*U[1] = \
@@ -125,6 +131,27 @@ def A4(t,X):
 					+ c2*c4*R2(X)*KT_2(X)*(c9*X[3] - c10*F_PE1_2(X) - c11*X[7] + c12*X[7]**2/X[5]) \
 					- dA3(t,X) - Z3(t,X) + k4*Z4(t,X)
 	"""
+	InitGlobals = kwargs.get("InitGlobals",False)
+	assert type(InitGlobals)==bool,"InitGlobals must be either True or False."
+
+	if InitGlobals == True:
+		init_globals_muscle_activation_controller(X)
+
+	global r_1,kt_1,flv_1
+	global r_2,kt_2,flv_2
+	global dr1_dx1,dkt_1_dx3
+	global dr2_dx1,dkt_2_dx4
+	global f_pe1_1,f_pe1_2
+
+	return(c2*c3*dr1_dx1*dX1_dt(X)*kt_1*X[6] \
+				+ c2*c3*r_1*dkt_1_dx3*dX3_dt(X)*X[6] \
+					+ c2*c3*r_1*kt_1*(c5*X[2] - c6*f_pe1_1 - c7*X[6] + c8*X[6]**2/X[4]) \
+			+ c2*c4*dr2_dx1*dX1_dt(X)*kt_2*X[7] \
+			 	+ c2*c4*r_2*dkt_2_dx4*dX4_dt(X)*X[7] \
+					+ c2*c4*r_2*kt_2*(c9*X[3] - c10*f_pe1_2 - c11*X[7] + c12*X[7]**2/X[5]) \
+			- dA3(t,X) - Z3(t,X) + k4*Z4(t,X))
+
+def init_globals_muscle_activation_controller(X):
 	global r_1,kt_1,flv_1
 	r_1 = R1(X)
 	kt_1 = KT_1(X)
@@ -143,10 +170,17 @@ def A4(t,X):
 	f_pe1_1 = F_PE1_1(X)
 	f_pe1_2 = F_PE1_2(X)
 
-	return(c2*c3*dr1_dx1*dX1_dt(X)*kt_1*X[6] \
-				+ c2*c3*r_1*dkt_1_dx3*dX3_dt(X)*X[6] \
-					+ c2*c3*r_1*kt_1*(c5*X[2] - c6*f_pe1_1 - c7*X[6] + c8*X[6]**2/X[4]) \
-			+ c2*c4*dr2_dx1*dX1_dt(X)*kt_2*X[7] \
-			 	+ c2*c4*r_2*dkt_2_dx4*dX4_dt(X)*X[7] \
-					+ c2*c4*r_2*kt_2*(c9*X[3] - c10*f_pe1_2 - c11*X[7] + c12*X[7]**2/X[5]) \
-			- dA3(t,X) - Z3(t,X) + k4*Z4(t,X))
+def init_globals_muscle_velocity_controller(X):
+	global r_1,kt_1
+	r_1 = R1(X)
+	kt_1 = KT_1(X)
+	global r_2,kt_2
+	r_2 = R2(X)
+	kt_2 = KT_2(X)
+	global dr1_dx1
+	dr1_dx1 = dR1_dx1(X)
+	global dr2_dx1
+	dr2_dx1 = dR2_dx1(X)
+	global v_MTU_1,v_MTU_2
+	v_MTU_1 = v_MTU1(X)
+	v_MTU_2 = v_MTU2(X)
