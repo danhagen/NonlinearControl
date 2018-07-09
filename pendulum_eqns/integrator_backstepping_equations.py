@@ -98,10 +98,12 @@ def A4(t,X):
 					+ c2*c4*R2(X)*KT_2(X)*(c9*X[3] - c10*F_PE1_2(X) - c11*X[7] + c12*X[7]**2/X[5]) \
 					- dA3(t,X) - Z3(t,X) + k4*Z4(t,X)
 	"""
-	return(c2*c3*dR1_dx1(X)*dX1_dt(X)*KT_1(X)*X[6] \
-				+ c2*c3*R1(X)*dKT_1_dx3(X)*dX3_dt(X)*X[6] \
-					+ c2*c3*R1(X)*KT_1(X)*(c5*X[2] - c6*F_PE1_1(X) - c7*X[6] + c8*X[6]**2/X[4]) \
-			+ c2*c4*dR2_dx1(X)*dX1_dt(X)*KT_2(X)*X[7] \
-			 	+ c2*c4*R2(X)*dKT_2_dx4(X)*dX4_dt(X)*X[7] \
-					+ c2*c4*R2(X)*KT_2(X)*(c9*X[3] - c10*F_PE1_2(X) - c11*X[7] + c12*X[7]**2/X[5]) \
+	global r_1,kt_1,flv_1
+	global r_2,kt_2,flv_2
+	return(c2*c3*dR1_dx1(X)*dX1_dt(X)*kt_1*X[6] \
+				+ c2*c3*r_1*dKT_1_dx3(X)*dX3_dt(X)*X[6] \
+					+ c2*c3*r_1*kt_1*(c5*X[2] - c6*F_PE1_1(X) - c7*X[6] + c8*X[6]**2/X[4]) \
+			+ c2*c4*dR2_dx1(X)*dX1_dt(X)*kt_2*X[7] \
+			 	+ c2*c4*r_2*dKT_2_dx4(X)*dX4_dt(X)*X[7] \
+					+ c2*c4*r_2*kt_2*(c9*X[3] - c10*F_PE1_2(X) - c11*X[7] + c12*X[7]**2/X[5]) \
 			- dA3(t,X) - Z3(t,X) + k4*Z4(t,X))
