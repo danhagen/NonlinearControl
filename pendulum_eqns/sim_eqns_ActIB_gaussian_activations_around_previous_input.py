@@ -4,7 +4,7 @@ from termcolor import cprint,colored
 from danpy.sb import dsb,get_terminal_width
 from pendulum_eqns.init_muscle_activation_controlled_model import *
 
-N_seconds = 1
+N_seconds = 4
 N = N_seconds*10000 + 1
 Time = np.linspace(0,N_seconds,N)
 dt = Time[1]-Time[0]
@@ -217,7 +217,11 @@ def run_N_sim_gauss_act(**kwargs):
 
     print("\n")
     for j in range(NumberOfTrials):
-        TrialTitle = "          Trial #" + str(j+1)+ "          \n"
+        TrialTitle = (
+            "          Trial "
+            + str(j+1)
+            + "/" +str(NumberOfTrials)
+            + "          \n")
         print(
             " "*int(TerminalWidth/2 - len(TrialTitle)/2)
             + colored(TrialTitle,'white',attrs=["underline","bold"])
@@ -307,12 +311,130 @@ def plot_N_sim_gauss_act(t,TotalX,TotalU,**kwargs):
 
     if Return == True:
         if ReturnError == True:
-            return([fig1,fig2,fig3,fig4,fig5],[Error1,Error2])
+            return([fig1,fig2,fig3,fig4,fig5],[-Error1,-Error2])
         else:
             return([fig1,fig2,fig3,fig4,fig5])
     else:
         if ReturnError == True:
             plt.show()
-            return([Error1,Error2])
+            return([-Error1,-Error2])
         else:
             plt.show()
+
+def plot_l_m_approximation_error_vs_tendon_tension(t,TotalX,Error,**kwargs):
+
+    Return = kwargs.get("Return",False)
+    assert type(Return) == bool, "Return should either be True or False"
+
+    InitialTensions = kwargs.get("InitialTensions",[TotalX[0,2:4,0]])
+    assert type(InitialTensions)==list,"InitialTensions must be a list or arrays"
+    assert all(np.array([str(type(el))=="<class 'numpy.ndarray'>" for el in InitialTensions])), "All elements of InitialTensions must be a numpy.ndarray."
+
+    NumberOfTensionTrials = len(InitialTensions)
+    TendonTension1 = np.linspace(0.1*F_MAX1,0.9*F_MAX1,1001)
+    TendonTension2 = np.linspace(0.1*F_MAX2,0.9*F_MAX2,1001)
+
+    # error_function_1 = return_error_func(TotalX[0,2,0],F_MAX1,lTo1)
+    # error_function_2 = return_error_func(TotalX[0,3,0],F_MAX2,lTo2)
+    #
+    # TendonTension1Range = TotalX[:,2,:].max() - TotalX[:,2,:].min()
+    # TendonTension1 = np.linspace(
+    #         TotalX[:,2,:].min()-0.25*TendonTension1Range,
+    #         TotalX[:,2,:].max()+0.25*TendonTension1Range,
+    #         1001)
+    # Error1 = error_function_1(TendonTension1)
+    #
+    # TendonTension2Range = TotalX[:,3,:].max() - TotalX[:,3,:].min()
+    # TendonTension2 = np.linspace(
+    #         TotalX[:,3,:].min()-0.25*TendonTension2Range,
+    #         TotalX[:,3,:].max()+0.25*TendonTension2Range,
+    #         1001)
+    # Error2 = error_function_2(TendonTension2)
+
+
+    fig1,axes1 = plt.subplots(2,2,figsize=(10,8))
+    plt.suptitle("Error from MTU Approx vs. Tendon Tension\nMuscle 1",fontsize=16)
+    axes1[0][0].set_ylabel("Error (m)")
+    axes1[0][0].set_xlabel("Tendon Tension (N)")
+    # axes1[0][0].plot(TendonTension1,Error1,'0.70',lw=2)
+    axes1[0][1].set_xlabel(r"$\longrightarrow$ Time (s) $\longrightarrow$")
+    axes1[0][1].set_yticklabels(["" for el in axes1[0][1].get_yticks()])
+    axes1[1][0].set_ylabel(r"$\longleftarrow$ Time (s) $\longleftarrow$")
+    axes1[1][0].set_xlim(axes1[0][0].get_xlim())
+    axes1[1][0].set_xticklabels(["" for el in axes1[0][0].get_xticks()])
+    axes1[1][0].yaxis.tick_right()
+    axes1[1][0].yaxis.set_label_position("right")
+    axes1[1][0].set_yticks(-np.array(list(range(N_seconds+1))))
+    axes1[1][0].set_yticklabels([str(-el) for el in axes1[1][0].get_yticks()])
+    axes1[1][1].text(0.1,0.65,
+        (r'error $= \frac{\tau}{\alpha}\cdot\ln\left(\frac{e^{T_{1}(t)/\tau} - 1}{e^{T_{1}(0)/\tau} - 1} \right )$'),fontsize=20)
+    axes1[1][1].text(0.175,0.4,
+        (r'where,    $\tau = F_{MAX,1}\cdot c^T \cdot k^T$'),fontsize=14)
+    axes1[1][1].text(0.175,0.2,
+        (r'and    $\alpha = \frac{F_{MAX,1}\cdot c^T}{l_{T_{o,1}}}$'),fontsize=14)
+    axes1[1][1].axis('off')
+
+    fig2,axes2 = plt.subplots(2,2,figsize=(10,8))
+    plt.suptitle("Error from MTU Approx vs. Tendon Tension\nMuscle 2",fontsize=16)
+    axes2[0][0].set_ylabel("Error (m)")
+    axes2[0][0].set_xlabel("Tendon Tension (N)")
+    # axes2[0][0].plot(TendonTension2,Error2,'0.70',lw=2)
+    axes2[0][1].set_xlabel(r"$\longrightarrow$ Time (s) $\longrightarrow$")
+    axes2[0][1].set_yticklabels(["" for el in axes2[0][1].get_yticks()])
+    axes2[1][0].set_ylabel(r"$\longleftarrow$ Time (s) $\longleftarrow$")
+    axes2[1][0].set_xlim(axes2[0][0].get_xlim())
+    axes2[1][0].set_xticklabels(["" for el in axes2[0][0].get_xticks()])
+    axes2[1][0].yaxis.tick_right()
+    axes2[1][0].yaxis.set_label_position("right")
+    axes2[1][0].set_yticks(-np.array(list(range(N_seconds+1))))
+    axes2[1][0].set_yticklabels([str(-el) for el in axes1[1][0].get_yticks()])
+    axes2[1][1].text(0.1,0.65,
+        (r'error $= \frac{\tau}{\alpha}\cdot\ln\left(\frac{e^{T_{2}(t)/\tau} - 1}{e^{T_{2}(0)/\tau} - 1} \right )$'),fontsize=20)
+    axes2[1][1].text(0.175,0.4,
+        (r'where,    $\tau = F_{MAX,2}\cdot c^T \cdot k^T$'),fontsize=14)
+    axes2[1][1].text(0.175,0.2,
+        (r'and    $\alpha = \frac{F_{MAX,2}\cdot c^T}{l_{T_{o,2}}}$'),fontsize=14)
+    axes2[1][1].axis('off')
+
+    for i in range(NumberOfTensionTrials):
+        error_function_1 = return_error_func(InitialTensions[i][0],F_MAX1,lTo1)
+        error_function_2 = return_error_func(InitialTensions[i][1],F_MAX2,lTo2)
+        Error1 = error_function_1(TendonTension1)
+        Error2 = error_function_2(TendonTension2)
+        axes1[0][0].plot(TendonTension1,Error1,str(1-InitialTensions[i][0]/F_MAX1),lw=2)
+        axes2[0][0].plot(TendonTension2,Error2,str(1-InitialTensions[i][1]/F_MAX2),lw=2)
+
+    statusbar = dsb(0,np.shape(TotalX)[0],
+        title=plot_l_m_approximation_error_vs_tendon_tension.__name__)
+    for i in range(np.shape(TotalX)[0]):
+        axes1[0][0].plot(TotalX[i,2,:],Error[0][i])
+        axes1[0][1].plot(Time,Error[0][i])
+        axes1[1][0].plot(TotalX[i,2,:],-Time)
+
+        axes2[0][0].plot(TotalX[i,3,:],Error[1][i])
+        axes2[0][1].plot(Time,Error[1][i])
+        axes2[1][0].plot(TotalX[i,3,:],-Time)
+        statusbar.update(i)
+
+    axes1[0][0].set_xlim(axes1[1][0].get_xlim())
+    axes2[0][0].set_xlim(axes2[1][0].get_xlim())
+    
+    if Return == True:
+        return([fig1,fig2])
+    else:
+        plt.show()
+
+def return_error(T,F_MAX,lTo):
+    tau = F_MAX*cT*kT
+    alpha = F_MAX*cT/lTo
+    error = (tau/alpha)*np.log(np.exp(T/tau) - 1) \
+            - (tau/alpha)*np.log(np.exp(T[0]/tau) - 1)
+    return(error)
+
+def return_error_func(T_o,F_MAX,lTo):
+    tau = F_MAX*cT*kT
+    alpha = F_MAX*cT/lTo
+    def error_func(T):
+        return((tau/alpha)*np.log(np.exp(T/tau) - 1) \
+            - (tau/alpha)*np.log(np.exp(T_o/tau) - 1))
+    return(error_func)

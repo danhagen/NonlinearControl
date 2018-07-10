@@ -305,7 +305,6 @@ def plot_inputs(t,U,**kwargs):
 def plot_l_m_comparison(t,X,**kwargs):
 
 	"""
-	Takes in a numpy.ndarray for time (t) of shape (N,) and the numpy.ndarray for the input (U) (NOT NECESSARILY THE SAME LENGTH AS t). Returns a plot of the states.
 
 	~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	**kwargs

@@ -174,7 +174,11 @@ def run_N_sim_rand_act(**kwargs):
 
 	print("\n")
 	for j in range(NumberOfTrials):
-		TrialTitle = "          Trial #" + str(j+1)+ "          \n"
+		TrialTitle = (
+            "          Trial "
+            + str(j+1)
+            + "/" +str(NumberOfTrials)
+            + "          \n")
 		print(
 			" "*int(TerminalWidth/2 - len(TrialTitle)/2)
 			+ colored(TrialTitle,'white',attrs=["underline","bold"])
