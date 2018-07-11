@@ -334,30 +334,19 @@ def plot_l_m_approximation_error_vs_tendon_tension(t,TotalX,Error,**kwargs):
     TendonTension1 = np.linspace(0.1*F_MAX1,0.9*F_MAX1,1001)
     TendonTension2 = np.linspace(0.1*F_MAX2,0.9*F_MAX2,1001)
 
-    # error_function_1 = return_error_func(TotalX[0,2,0],F_MAX1,lTo1)
-    # error_function_2 = return_error_func(TotalX[0,3,0],F_MAX2,lTo2)
-    #
-    # TendonTension1Range = TotalX[:,2,:].max() - TotalX[:,2,:].min()
-    # TendonTension1 = np.linspace(
-    #         TotalX[:,2,:].min()-0.25*TendonTension1Range,
-    #         TotalX[:,2,:].max()+0.25*TendonTension1Range,
-    #         1001)
-    # Error1 = error_function_1(TendonTension1)
-    #
-    # TendonTension2Range = TotalX[:,3,:].max() - TotalX[:,3,:].min()
-    # TendonTension2 = np.linspace(
-    #         TotalX[:,3,:].min()-0.25*TendonTension2Range,
-    #         TotalX[:,3,:].max()+0.25*TendonTension2Range,
-    #         1001)
-    # Error2 = error_function_2(TendonTension2)
-
-
     fig1,axes1 = plt.subplots(2,2,figsize=(10,8))
     plt.suptitle("Error from MTU Approx vs. Tendon Tension\nMuscle 1",fontsize=16)
-    axes1[0][0].set_ylabel("Error (m)")
     axes1[0][0].set_xlabel("Tendon Tension (N)")
+    axes1[0][0].set_ylabel("Error (m)")
+    axes1[0][0].set_xlim(
+            TotalX[:,2,:].min()-0.1*(TotalX[:,2,:].max()-TotalX[:,2,:].min()),
+            TotalX[:,2,:].max()+0.1*(TotalX[:,2,:].max()-TotalX[:,2,:].min()))
+    axes1[0][0].set_ylim(
+            Error[0].min()-0.1*(Error[0].max()-Error[0].min()),
+            Error[0].max()+0.1*(Error[0].max()-Error[0].min()))
     # axes1[0][0].plot(TendonTension1,Error1,'0.70',lw=2)
     axes1[0][1].set_xlabel(r"$\longrightarrow$ Time (s) $\longrightarrow$")
+    axes1[0][1].set_ylim(axes1[0][0].get_ylim())
     axes1[0][1].set_yticklabels(["" for el in axes1[0][1].get_yticks()])
     axes1[1][0].set_ylabel(r"$\longleftarrow$ Time (s) $\longleftarrow$")
     axes1[1][0].set_xlim(axes1[0][0].get_xlim())
@@ -378,8 +367,15 @@ def plot_l_m_approximation_error_vs_tendon_tension(t,TotalX,Error,**kwargs):
     plt.suptitle("Error from MTU Approx vs. Tendon Tension\nMuscle 2",fontsize=16)
     axes2[0][0].set_ylabel("Error (m)")
     axes2[0][0].set_xlabel("Tendon Tension (N)")
+    axes2[0][0].set_xlim(
+            TotalX[:,3,:].min()-0.1*(TotalX[:,3,:].max()-TotalX[:,3,:].min()),
+            TotalX[:,3,:].max()+0.1*(TotalX[:,3,:].max()-TotalX[:,3,:].min()))
+    axes2[0][0].set_ylim(
+            Error[1].min()-0.1*(Error[1].max()-Error[1].min()),
+            Error[1].max()+0.1*(Error[1].max()-Error[1].min()))
     # axes2[0][0].plot(TendonTension2,Error2,'0.70',lw=2)
     axes2[0][1].set_xlabel(r"$\longrightarrow$ Time (s) $\longrightarrow$")
+    axes2[0][1].set_ylim(axes2[0][0].get_ylim())
     axes2[0][1].set_yticklabels(["" for el in axes2[0][1].get_yticks()])
     axes2[1][0].set_ylabel(r"$\longleftarrow$ Time (s) $\longleftarrow$")
     axes2[1][0].set_xlim(axes2[0][0].get_xlim())
@@ -416,9 +412,6 @@ def plot_l_m_approximation_error_vs_tendon_tension(t,TotalX,Error,**kwargs):
         axes2[1][0].plot(TotalX[i,3,:],-Time)
         statusbar.update(i)
 
-    axes1[0][0].set_xlim(axes1[1][0].get_xlim())
-    axes2[0][0].set_xlim(axes2[1][0].get_xlim())
-    
     if Return == True:
         return([fig1,fig2])
     else:

@@ -1,5 +1,6 @@
 import numpy as np
 import os.path
+import time
 import matplotlib._pylab_helpers
 from matplotlib.backends.backend_pdf import PdfPages
 import plotly.plotly as py
@@ -66,7 +67,7 @@ def save_figures(Destination,BaseFileName,**kwargs):
 		else:
 			[PDFFile.savefig(fig) for fig in figs]
 		PDFFile.close()
-		
+
 def save_figures_to_plotly(FileName,**kwargs):
 	"""
 
