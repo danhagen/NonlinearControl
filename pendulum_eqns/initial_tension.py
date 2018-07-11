@@ -21,6 +21,10 @@ def return_initial_tension(X_o,**kwargs):
 	2) InitialAngularAcceleration - must be a float or an int. Default is 0 (starting from rest).
 
 	"""
+	ReturnMultipleInitialTensions = kwargs.get("ReturnMultipleInitialTensions",False)
+	assert type(ReturnMultipleInitialTensions)==bool,\
+	 		"ReturnMultipleInitialTensions must be either True or False. Default is False."
+
 	Seed = kwargs.get("Seed",None)
 	assert type(Seed) in [float,int] or Seed is None, "Seed must be a float or an int or None."
 	np.random.seed(Seed)
@@ -45,10 +49,17 @@ def return_initial_tension(X_o,**kwargs):
 	UpperBound_x = min(Bounds[0][1],InverseConstraint(Bounds[1][1]))
 	UpperBound_y = Constraint(UpperBound_x)
 
-	LowerBoundVector = np.array([[LowerBound_x],[LowerBound_y]])
-	UpperBoundVector = np.array([[UpperBound_x],[UpperBound_y]])
+	LowerBoundVector = np.matrix([[LowerBound_x,LowerBound_y]])
+	UpperBoundVector = np.matrix([[UpperBound_x,UpperBound_y]])
 
-	InitialTension = (UpperBoundVector-LowerBoundVector)*np.random.rand() + LowerBoundVector
+	if ReturnMultipleInitialTensions == True:
+		InitialTension = [
+				(UpperBoundVector-LowerBoundVector)*k + LowerBoundVector
+				for k in np.linspace(0,1,11)
+		]
+	else:
+		InitialTension = (UpperBoundVector-LowerBoundVector)*np.random.rand() + LowerBoundVector
+		
 	return(InitialTension)
 
 def plot_initial_tension_values(X_o,**kwargs):
