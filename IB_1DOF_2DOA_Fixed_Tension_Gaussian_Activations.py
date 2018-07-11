@@ -13,5 +13,5 @@ additional_figs = plot_l_m_approximation_error_vs_tendon_tension(
                         )
 # plt.show()
 
-save_figures("output_figures/fixed_initial_tension_gauss_act/" + "1DOF_2DOA_v1.0")
+save_figures("output_figures/fixed_initial_tension_gauss_act/","1DOF_2DOA_v1.0",SaveAsPDF=True)
 plt.close('all')

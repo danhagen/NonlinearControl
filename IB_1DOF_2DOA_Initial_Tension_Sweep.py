@@ -45,7 +45,7 @@ if len(InitialTensions) != 0:
                             )
     # plt.show()
 
-    save_figures("output_figures/gauss_act_initial_tension_sweep/" + "1DOF_2DOA_v1.0")
+    save_figures("output_figures/gauss_act_initial_tension_sweep/","1DOF_2DOA_v1.0",SaveAsPDF=True)
     plt.close('all')
 else:
     print("All Trials Unsuccessful...")

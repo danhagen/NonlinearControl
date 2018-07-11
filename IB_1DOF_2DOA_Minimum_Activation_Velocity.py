@@ -6,5 +6,5 @@ figs = plot_N_sim_MAV(Time,TotalX,TotalU,Return=True)
 
 # plt.show()
 
-save_figures("output_figures/minimum_activation_velocity/" + "1DOF_2DOA_v1.0")
+save_figures("output_figures/minimum_activation_velocity/","1DOF_2DOA_v1.0",SaveAsPDF=True)
 plt.close('all')

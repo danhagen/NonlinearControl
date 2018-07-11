@@ -15,20 +15,52 @@ def return_length_of_nonzero_array(X):
 	else:
 		return(np.argmax((X[:,1:] == np.zeros(np.shape(X[:,1:]))).sum(axis=0) == np.shape(X[:,1:])[0])+1)
 
-def save_figures(BaseFileName,**kwargs):
+def save_figures(Destination,BaseFileName,**kwargs):
+	"""
+
+	"""
+
+	SubFolder = kwargs.get("SubFolder",time.strftime("%Y_%m_%d_%H%M%S")+"/")
+	FilePath = Destination + SubFolder
+	assert type(Destination) == str and Destination[-1] == "/", \
+		"Destination must be a string ending is '/'. Currently Destination = " + str(Destination)
+	assert type(SubFolder) == str and SubFolder[-1] == "/", \
+		"SubFolder must be a string ending is '/'. Currently SubFolder = " + str(SubFolder)
+
+	if not os.path.exists(FilePath):
+		os.makedirs(FilePath)
+
 	figs = kwargs.get("figs",
 		[manager.canvas.figure for manager in matplotlib._pylab_helpers.Gcf.get_all_fig_managers()]
 		)
 
+	SaveAsPDF = kwargs.get("SaveAsPDF",False)
+	assert type(SaveAsPDF)==bool, "SaveAsPDF must be either True or False."
+
 	i = 1
-	FileName = BaseFileName + "_" + "{:0>2d}".format(i) + ".pdf"
-	if os.path.exists(FileName) == True:
-		while os.path.exists(FileName) == True:
+	FileName = BaseFileName + "_" + "{:0>2d}".format(i) + "-01.jpg"
+	if os.path.exists(FilePath + FileName) == True:
+		while os.path.exists(FilePath + FileName) == True:
 			i += 1
-			FileName = BaseFileName + "_" + "{:0>2d}".format(i) + ".pdf"
-	PDFFile = PdfPages(FileName)
-	if len(figs)==1:
-		PDFFile.savefig(figs[0])
-	else:
-		[PDFFile.savefig(fig) for fig in figs]
-	PDFFile.close()
+			FileName = BaseFileName + "_" + "{:0>2d}".format(i) + "-01.jpg"
+
+	for i in range(len(figs)):
+		figs[i].savefig(FilePath + FileName[:-6] + "{:0>2d}".format(i+1) + ".jpg")
+
+	if SaveAsPDF == True:
+		PDFFileName = FileName[:-7] + ".pdf"
+		assert not os.path.exists(FilePath + PDFFileName), \
+				("Error with naming file. "
+				+ PDFFileName
+				+ " should not already exist as "
+				+ FileName
+				+ " does not exist. Try renaming or deleting "
+				+ PDFFileName
+				)
+
+		PDFFile = PdfPages(FilePath + PDFFileName)
+		if len(figs)==1:
+			PDFFile.savefig(figs[0])
+		else:
+			[PDFFile.savefig(fig) for fig in figs]
+		PDFFile.close()
