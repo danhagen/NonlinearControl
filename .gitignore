@@ -1,5 +1,8 @@
 # Local Output Figures
-output_figures/
+# output_figures/
+
+# Pickle Files
+*.pkl
 
 # PDF Files
 *.pdf

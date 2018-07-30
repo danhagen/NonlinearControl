@@ -1,0 +1,4 @@
+For this trial, the update law for the states utilized the input for the current timestep. This caused, what appears to be, signal dependent, frequency locked error caused by inputs off by a timestep (i.e., signal velocity).
+
+Default parameters.
+
