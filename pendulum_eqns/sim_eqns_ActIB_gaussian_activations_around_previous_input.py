@@ -193,7 +193,8 @@ def run_sim_gauss_act(**kwargs):
                 									dX5_dt(X[:,i]),\
                 									dX6_dt(X[:,i]),\
                 									dX7_dt(X[:,i],U=U[:,i+1]),\
-                									dX8_dt(X[:,i],U=U[:,i+1])])
+                									dX8_dt(X[:,i],U=U[:,i+1])
+                                                    ])
                 statusbar.update(i)
             AnotherIteration = False
             return(X,U)
@@ -331,8 +332,8 @@ def plot_l_m_approximation_error_vs_tendon_tension(t,TotalX,Error,**kwargs):
     assert all(np.array([str(type(el))=="<class 'numpy.ndarray'>" for el in InitialTensions])), "All elements of InitialTensions must be a numpy.ndarray."
 
     NumberOfTensionTrials = len(InitialTensions)
-    TendonTension1 = np.linspace(0.1*F_MAX1,0.9*F_MAX1,1001)
-    TendonTension2 = np.linspace(0.1*F_MAX2,0.9*F_MAX2,1001)
+    TendonTension1 = np.linspace(0.01*F_MAX1,0.9*F_MAX1,1001)
+    TendonTension2 = np.linspace(0.01*F_MAX2,0.9*F_MAX2,1001)
 
     fig1,axes1 = plt.subplots(2,2,figsize=(10,8))
     plt.suptitle("Error from MTU Approx vs. Tendon Tension\nMuscle 1",fontsize=16)

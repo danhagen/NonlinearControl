@@ -49,17 +49,17 @@ def return_initial_tension(X_o,**kwargs):
 	UpperBound_x = min(Bounds[0][1],InverseConstraint(Bounds[1][1]))
 	UpperBound_y = Constraint(UpperBound_x)
 
-	LowerBoundVector = np.matrix([[LowerBound_x,LowerBound_y]])
-	UpperBoundVector = np.matrix([[UpperBound_x,UpperBound_y]])
+	LowerBoundVector = np.array([[LowerBound_x],[LowerBound_y]])
+	UpperBoundVector = np.array([[UpperBound_x],[UpperBound_y]])
 
 	if ReturnMultipleInitialTensions == True:
 		InitialTension = [
 				(UpperBoundVector-LowerBoundVector)*k + LowerBoundVector
-				for k in np.linspace(0,1,11)
+				for k in np.linspace(0.05,1,4)
 		]
 	else:
 		InitialTension = (UpperBoundVector-LowerBoundVector)*np.random.rand() + LowerBoundVector
-		
+
 	return(InitialTension)
 
 def plot_initial_tension_values(X_o,**kwargs):

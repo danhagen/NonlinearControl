@@ -1,3 +1,6 @@
+# Local Output Figures
+output_figures/
+
 # PDF Files
 *.pdf
 

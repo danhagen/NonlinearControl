@@ -1,7 +1,7 @@
 from pendulum_eqns.sim_eqns_ActIB_gaussian_activations_around_previous_input import *
 from useful_functions import *
 
-TotalX,TotalU = run_N_sim_gauss_act(NumberOfTrials=3)
+TotalX,TotalU = run_N_sim_gauss_act(NumberOfTrials=1)
 figs = plot_N_sim_gauss_act(Time,TotalX,TotalU,Return=True)
 
 # plt.show()
