@@ -357,7 +357,7 @@ def plot_l_m_approximation_error_vs_tendon_tension(t,TotalX,Error,**kwargs):
     axes1[1][0].set_yticks(-np.array(list(range(N_seconds+1))))
     axes1[1][0].set_yticklabels([str(-el) for el in axes1[1][0].get_yticks()])
     axes1[1][1].text(0.1,0.65,
-        (r'error $= \frac{\tau}{\alpha}\cdot\ln\left(\frac{e^{T_{1}(t)/\tau} - 1}{e^{T_{1}(0)/\tau} - 1} \right )$'),fontsize=20)
+        (r'error $= \frac{\tau}{\alpha}\cdot\ln\left(\frac{e^{T_{1}(t)/\tau} - 1}{e^{T_{1}(0)/\tau} - 1} \right ) - (1 - \cos(\alpha_{1})) \right[ l_{m,1}(t) - l_{m,1}(0) \left]$'),fontsize=20)
     axes1[1][1].text(0.175,0.4,
         (r'where,    $\tau = F_{MAX,1}\cdot c^T \cdot k^T$'),fontsize=14)
     axes1[1][1].text(0.175,0.2,
@@ -386,16 +386,16 @@ def plot_l_m_approximation_error_vs_tendon_tension(t,TotalX,Error,**kwargs):
     axes2[1][0].set_yticks(-np.array(list(range(N_seconds+1))))
     axes2[1][0].set_yticklabels([str(-el) for el in axes1[1][0].get_yticks()])
     axes2[1][1].text(0.1,0.65,
-        (r'error $= \frac{\tau}{\alpha}\cdot\ln\left(\frac{e^{T_{2}(t)/\tau} - 1}{e^{T_{2}(0)/\tau} - 1} \right )$'),fontsize=20)
+        (r'error $= \frac{\tau}{k}\cdot\ln\left(\frac{e^{T_{2}(t)/\tau} - 1}{e^{T_{2}(0)/\tau} - 1} \right ) - (1 - \cos(\alpha_{2})) \right[ l_{m,2}(t) - l_{m,2}(0) \left]$'),fontsize=20)
     axes2[1][1].text(0.175,0.4,
         (r'where,    $\tau = F_{MAX,2}\cdot c^T \cdot k^T$'),fontsize=14)
     axes2[1][1].text(0.175,0.2,
-        (r'and    $\alpha = \frac{F_{MAX,2}\cdot c^T}{l_{T_{o,2}}}$'),fontsize=14)
+        (r'and    $k = \frac{F_{MAX,2}\cdot c^T}{l_{T_{o,2}}}$'),fontsize=14)
     axes2[1][1].axis('off')
 
     for i in range(NumberOfTensionTrials):
-        error_function_1 = return_error_func(InitialTensions[i][0],F_MAX1,lTo1)
-        error_function_2 = return_error_func(InitialTensions[i][1],F_MAX2,lTo2)
+        error_function_1 = return_error_func_no_pennation(InitialTensions[i][0],F_MAX1,lTo1)
+        error_function_2 = return_error_func_no_pennation(InitialTensions[i][1],F_MAX2,lTo2)
         Error1 = error_function_1(TendonTension1)
         Error2 = error_function_2(TendonTension2)
         axes1[0][0].plot(TendonTension1,Error1,str(1-InitialTensions[i][0]/F_MAX1),lw=2)
@@ -421,8 +421,8 @@ def plot_l_m_approximation_error_vs_tendon_tension(t,TotalX,Error,**kwargs):
 def return_error(T,l_m,F_MAX,lTo,α):
     tau = F_MAX*cT*kT
     alpha = F_MAX*cT/lTo
-    error = (tau/alpha)*np.log((np.exp(T/tau) - 1)/(np.exp(T[0]/tau) - 1))
-                (np.cos(α) - 1)*(l_m - l_m[0])
+    error = (tau/alpha)*np.log((np.exp(T/tau) - 1)/(np.exp(T[0]/tau) - 1)) \
+                + (np.cos(α) - 1)*(l_m - l_m[0])
     return(error)
 
 def return_error_func(T_o,l_mo,F_MAX,lTo,α):
@@ -430,5 +430,18 @@ def return_error_func(T_o,l_mo,F_MAX,lTo,α):
     alpha = F_MAX*cT/lTo
     def error_func(T,l_m):
         return((tau/alpha)*np.log((np.exp(T/tau) - 1)/(np.exp(T_o/tau) - 1))
-                    (np.cos(α) - 1)*(l_m - l_mo))
+                    + (np.cos(α) - 1)*(l_m - l_mo))
+    return(error_func)
+
+def return_error_no_pennation(T,F_MAX,lTo):
+    tau = F_MAX*cT*kT
+    alpha = F_MAX*cT/lTo
+    error = (tau/alpha)*np.log((np.exp(T/tau) - 1)/(np.exp(T[0]/tau) - 1))
+    return(error)
+
+def return_error_func_no_pennation(T_o,F_MAX,lTo):
+    tau = F_MAX*cT*kT
+    alpha = F_MAX*cT/lTo
+    def error_func(T):
+        return((tau/alpha)*np.log((np.exp(T/tau) - 1)/(np.exp(T_o/tau) - 1)))
     return(error_func)
