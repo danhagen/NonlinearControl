@@ -418,17 +418,17 @@ def plot_l_m_approximation_error_vs_tendon_tension(t,TotalX,Error,**kwargs):
     else:
         plt.show()
 
-def return_error(T,F_MAX,lTo):
+def return_error(T,l_m,F_MAX,lTo,α):
     tau = F_MAX*cT*kT
     alpha = F_MAX*cT/lTo
-    error = (tau/alpha)*np.log(np.exp(T/tau) - 1) \
-            - (tau/alpha)*np.log(np.exp(T[0]/tau) - 1)
+    error = (tau/alpha)*np.log((np.exp(T/tau) - 1)/(np.exp(T[0]/tau) - 1))
+                (np.cos(α) - 1)*(l_m - l_m[0])
     return(error)
 
-def return_error_func(T_o,F_MAX,lTo):
+def return_error_func(T_o,l_mo,F_MAX,lTo,α):
     tau = F_MAX*cT*kT
     alpha = F_MAX*cT/lTo
-    def error_func(T):
-        return((tau/alpha)*np.log(np.exp(T/tau) - 1) \
-            - (tau/alpha)*np.log(np.exp(T_o/tau) - 1))
+    def error_func(T,l_m):
+        return((tau/alpha)*np.log((np.exp(T/tau) - 1)/(np.exp(T_o/tau) - 1))
+                    (np.cos(α) - 1)*(l_m - l_mo))
     return(error_func)
