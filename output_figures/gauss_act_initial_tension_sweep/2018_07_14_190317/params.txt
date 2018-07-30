@@ -1,0 +1,1 @@
+switched BIC with TRI to see if the error discrepency was caused by the parameters (It didn't). Need to change the individual muscle functions to see if it changes the results.
