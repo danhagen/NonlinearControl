@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 from termcolor import cprint,colored
 from danpy.sb import dsb,get_terminal_width
 from pendulum_eqns.init_muscle_activation_controlled_model import *
@@ -356,13 +357,13 @@ def plot_l_m_approximation_error_vs_tendon_tension(t,TotalX,Error,**kwargs):
     axes1[1][0].yaxis.set_label_position("right")
     axes1[1][0].set_yticks(-np.array(list(range(N_seconds+1))))
     axes1[1][0].set_yticklabels([str(-el) for el in axes1[1][0].get_yticks()])
-    axes1[1][1].text(0.1,0.65,
+    axes1[1][1].text(0.00,0.65,
         (r'error $= \frac{\tau}{k}\cdot\ln\left(\frac{e^{T_{1}(t)/\tau} - 1}{e^{T_{1}(0)/\tau} - 1} \right )$'),fontsize=20)
-    axes1[1][1].text(0.1,0.5,
-        (r'    - $(1 - \cos(\alpha_{1}))\left[l_{m,1}(t) - l_{m,1}(0) \right]$'), fontsize=16)
-    axes1[1][1].text(0.175,0.4,
+    axes1[1][1].text(0.075,0.475,
+        (r'          - $(1 - \cos(\alpha_{1}))\left[l_{m,1}(t) - l_{m,1}(0) \right]$'), fontsize=16)
+    axes1[1][1].text(0.15,0.325,
         (r'where,    $\tau = F_{MAX,1}\cdot c^T \cdot k^T$'),fontsize=14)
-    axes1[1][1].text(0.175,0.2,
+    axes1[1][1].text(0.15,0.15,
         (r'and    $k = \frac{F_{MAX,1}\cdot c^T}{l_{T_{o,1}}}$'),fontsize=14)
     axes1[1][1].axis('off')
 
@@ -387,13 +388,13 @@ def plot_l_m_approximation_error_vs_tendon_tension(t,TotalX,Error,**kwargs):
     axes2[1][0].yaxis.set_label_position("right")
     axes2[1][0].set_yticks(-np.array(list(range(N_seconds+1))))
     axes2[1][0].set_yticklabels([str(-el) for el in axes1[1][0].get_yticks()])
-    axes2[1][1].text(0.1,0.65,
+    axes2[1][1].text(0.00,0.65,
         (r'error $= \frac{\tau}{k}\cdot\ln\left(\frac{e^{T_{2}(t)/\tau} - 1}{e^{T_{2}(0)/\tau} - 1} \right )$'),fontsize=20)
-    axes2[1][1].text(0.1,0.5,
-        (r'    - $(1 - \cos(\alpha_{1}))\left[l_{m,1}(t) - l_{m,1}(0) \right]$'), fontsize=16)
-    axes2[1][1].text(0.175,0.4,
+    axes2[1][1].text(0.075,0.475,
+        (r'          - $(1 - \cos(\alpha_{2}))\left[l_{m,2}(t) - l_{m,2}(0) \right]$'), fontsize=16)
+    axes2[1][1].text(0.15,0.325,
         (r'where,    $\tau = F_{MAX,2}\cdot c^T \cdot k^T$'),fontsize=14)
-    axes2[1][1].text(0.175,0.2,
+    axes2[1][1].text(0.15,0.15,
         (r'and    $k = \frac{F_{MAX,2}\cdot c^T}{l_{T_{o,2}}}$'),fontsize=14)
     axes2[1][1].axis('off')
 
@@ -416,6 +417,159 @@ def plot_l_m_approximation_error_vs_tendon_tension(t,TotalX,Error,**kwargs):
         axes2[0][1].plot(Time,Error[1][i])
         axes2[1][0].plot(TotalX[i,3,:],-Time)
         statusbar.update(i)
+
+    if Return == True:
+        return([fig1,fig2])
+    else:
+        plt.show()
+
+def plot_l_m_error_manifold(t,TotalX,Error,**kwargs):
+
+    Return = kwargs.get("Return",False)
+    assert type(Return) == bool, "Return should either be True or False"
+
+    InitialTensions = kwargs.get("InitialTensions",[TotalX[0,2:4,0]])
+    assert type(InitialTensions)==list,"InitialTensions must be a list or arrays"
+    assert all(np.array([str(type(el))=="<class 'numpy.ndarray'>" for el in InitialTensions])), "All elements of InitialTensions must be a numpy.ndarray."
+
+    NumberOfTensionTrials = len(InitialTensions)
+    TendonTension1 = np.linspace(0.01*F_MAX1,0.9*F_MAX1,1001)
+    TendonTension2 = np.linspace(0.01*F_MAX2,0.9*F_MAX2,1001)
+
+    fig1 = plt.figure(figsize=(10,8))
+    axes1_1 = fig1.add_subplot(221, projection='3d')
+    axes1_2 = fig1.add_subplot(222)
+    axes1_3 = fig1.add_subplot(223)
+    axes1_4 = fig1.add_subplot(224)
+
+    plt.suptitle("Error from MTU Approx vs. Tendon Tension\nMuscle 1",fontsize=16)
+
+    fig2 = plt.figure(figsize=(10,8))
+    axes2_1 = fig2.add_subplot(221, projection='3d')
+    axes2_2 = fig2.add_subplot(222)
+    axes2_3 = fig2.add_subplot(223)
+    axes2_4 = fig2.add_subplot(224)
+
+    plt.suptitle("Error from MTU Approx vs. Tendon Tension\nMuscle 2",fontsize=16)
+
+    statusbar = dsb(0,np.shape(TotalX)[0],
+        title=plot_l_m_approximation_error_vs_tendon_tension.__name__)
+    for i in range(np.shape(TotalX)[0]):
+        axes1_1.plot(TotalX[i,4,:],TotalX[i,2,:],Error[0][i])
+        axes1_2.plot(Time,Error[0][i])
+        axes1_3.plot(TotalX[i,2,:],-Time)
+
+        axes2_1.plot(TotalX[i,5,:],TotalX[i,3,:],Error[1][i])
+        axes2_2.plot(Time,Error[1][i])
+        axes2_3.plot(TotalX[i,3,:],-Time)
+        statusbar.update(i)
+
+    for i in range(TotalX.shape[0]):
+        error_function_1 = \
+                return_error_func(TotalX[i,2,0],TotalX[i,4,0],F_MAX1,lTo1,α1)
+        error_function_2 = \
+                return_error_func(TotalX[i,3,0],TotalX[i,5,0],F_MAX2,lTo2,α2)
+
+        MinimumTension1 = TotalX[:,2,:].min()
+        MaximumTension1 = TotalX[:,2,:].max()
+        Tension1Range = TotalX[:,2,:].max() - TotalX[:,2,:].min()
+        TendonTension1 = np.linspace(
+                    MinimumTension1 - 0.05*Tension1Range,
+                    MaximumTension1 + 0.05*Tension1Range,
+                    1001
+                    )
+
+        MinimumMuscleLength1 = TotalX[:,4,:].min()
+        MaximumMuscleLength1 = TotalX[:,4,:].max()
+        MuscleLength1Range = TotalX[:,4,:].max() - TotalX[:,4,:].min()
+        MuscleLength1 = np.linspace(
+                    MinimumMuscleLength1 - 0.05*MuscleLength1Range,
+                    MaximumMuscleLength1 + 0.05*MuscleLength1Range,
+                    1001
+                    )
+
+        MuscleLength1Mesh, TendonTension1Mesh = \
+                np.meshgrid(MuscleLength1,TendonTension1)
+        Error1 = \
+                error_function_1(TendonTension1Mesh,MuscleLength1Mesh)
+
+        MinimumTension2 = TotalX[:,3,:].min()
+        MaximumTension2 = TotalX[:,3,:].max()
+        Tension2Range = TotalX[:,3,:].max() - TotalX[:,3,:].min()
+        MuscleTension2 = np.linspace(
+                    MinimumTension2 - 0.05*Tension2Range,
+                    MaximumTension2 + 0.05*Tension2Range,
+                    1001
+                    )
+
+        MinimumMuscleLength2 = TotalX[:,5,:].min()
+        MaximumMuscleLength2 = TotalX[:,5,:].max()
+        MuscleLength2Range = TotalX[:,5,:].max() - TotalX[:,5,:].min()
+        MuscleLength2 = np.linspace(
+                    MinimumMuscleLength2 - 0.05*MuscleLength2Range,
+                    MaximumMuscleLength2 + 0.05*MuscleLength2Range,
+                    1001
+                    )
+
+        MuscleLength2Mesh, TendonTension2Mesh = \
+                np.meshgrid(MuscleLength2,TendonTension2)
+        Error2 = \
+                error_function_2(TendonTension2Mesh,MuscleLength2Mesh)
+
+        axes1_1.plot_surface(MuscleLength1Mesh,
+                            TendonTension1Mesh,
+                            Error1,
+                            color=str(np.linspace(0.25,0.75,TotalX.shape[0])[i]))
+        axes2_1.plot_surface(MuscleLength2Mesh,
+                            TendonTension2Mesh,
+                            Error2,
+                            color=str(np.linspace(0.25,0.75,TotalX.shape[0])[i]))
+
+    axes1_1.set_xlabel("Muscle Length (m)")
+    axes1_1.set_ylabel("Tendon Tension (N)")
+    axes1_1.set_zlabel("Error (m)")
+    axes1_2.set_xlabel(r"$\longrightarrow$ Time (s) $\longrightarrow$")
+    axes1_2.set_ylim(axes1_1.get_zlim())
+    # axes1_2.set_yticklabels(["" for el in axes1_2.get_yticks()])
+    axes1_3.set_ylabel(r"$\longleftarrow$ Time (s) $\longleftarrow$")
+    axes1_3.set_xlim(axes1_1.get_ylim())
+    # axes1_3.set_xticklabels(["" for el in axes1_1.get_xticks()])
+    axes1_3.yaxis.tick_right()
+    axes1_3.yaxis.set_label_position("right")
+    axes1_3.set_yticks(-np.array(list(range(N_seconds+1))))
+    axes1_3.set_yticklabels([str(-el) for el in axes1_3.get_yticks()])
+    axes1_4.text(0.00,0.65,
+        (r'error $= \frac{\tau}{k}\cdot\ln\left(\frac{e^{T_{1}(t)/\tau} - 1}{e^{T_{1}(0)/\tau} - 1} \right )$'),fontsize=20)
+    axes1_4.text(0.075,0.475,
+        (r'          - $(1 - \cos(\alpha_{1}))\left[l_{m,1}(t) - l_{m,1}(0) \right]$'), fontsize=16)
+    axes1_4.text(0.15,0.325,
+        (r'where,    $\tau = F_{MAX,1}\cdot c^T \cdot k^T$'),fontsize=14)
+    axes1_4.text(0.15,0.15,
+        (r'and    $k = \frac{F_{MAX,1}\cdot c^T}{l_{T_{o,1}}}$'),fontsize=14)
+    axes1_4.axis('off')
+
+    axes2_1.set_xlabel("Muscle Length (m)")
+    axes2_1.set_ylabel("Tendon Tension (N)")
+    axes2_1.set_zlabel("Error (m)")
+    axes2_2.set_xlabel(r"$\longrightarrow$ Time (s) $\longrightarrow$")
+    axes2_2.set_ylim(axes2_1.get_zlim())
+    # axes2_2.set_yticklabels(["" for el in axes2_2.get_yticks()])
+    axes2_3.set_ylabel(r"$\longleftarrow$ Time (s) $\longleftarrow$")
+    axes2_3.set_xlim(axes2_1.get_ylim())
+    # axes2_3.set_xticklabels(["" for el in axes2_1.get_xticks()])
+    axes2_3.yaxis.tick_right()
+    axes2_3.yaxis.set_label_position("right")
+    axes2_3.set_yticks(-np.array(list(range(N_seconds+1))))
+    axes2_3.set_yticklabels([str(-el) for el in axes1_3.get_yticks()])
+    axes2_4.text(0.00,0.65,
+        (r'error $= \frac{\tau}{k}\cdot\ln\left(\frac{e^{T_{2}(t)/\tau} - 1}{e^{T_{2}(0)/\tau} - 1} \right )$'),fontsize=20)
+    axes2_4.text(0.075,0.475,
+        (r'          - $(1 - \cos(\alpha_{2}))\left[l_{m,2}(t) - l_{m,2}(0) \right]$'), fontsize=16)
+    axes2_4.text(0.15,0.325,
+        (r'where,    $\tau = F_{MAX,2}\cdot c^T \cdot k^T$'),fontsize=14)
+    axes2_4.text(0.15,0.15,
+        (r'and    $k = \frac{F_{MAX,2}\cdot c^T}{l_{T_{o,2}}}$'),fontsize=14)
+    axes2_4.axis('off')
 
     if Return == True:
         return([fig1,fig2])
