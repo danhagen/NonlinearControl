@@ -357,11 +357,13 @@ def plot_l_m_approximation_error_vs_tendon_tension(t,TotalX,Error,**kwargs):
     axes1[1][0].set_yticks(-np.array(list(range(N_seconds+1))))
     axes1[1][0].set_yticklabels([str(-el) for el in axes1[1][0].get_yticks()])
     axes1[1][1].text(0.1,0.65,
-        (r'error $= \frac{\tau}{\alpha}\cdot\ln\left(\frac{e^{T_{1}(t)/\tau} - 1}{e^{T_{1}(0)/\tau} - 1} \right ) - (1 - \cos(\alpha_{1})) \right[ l_{m,1}(t) - l_{m,1}(0) \left]$'),fontsize=20)
+        (r'error $= \frac{\tau}{k}\cdot\ln\left(\frac{e^{T_{1}(t)/\tau} - 1}{e^{T_{1}(0)/\tau} - 1} \right )$'),fontsize=20)
+    axes1[1][1].text(0.1,0.5,
+        (r'    - $(1 - \cos(\alpha_{1}))\left[l_{m,1}(t) - l_{m,1}(0) \right]$'), fontsize=16)
     axes1[1][1].text(0.175,0.4,
         (r'where,    $\tau = F_{MAX,1}\cdot c^T \cdot k^T$'),fontsize=14)
     axes1[1][1].text(0.175,0.2,
-        (r'and    $\alpha = \frac{F_{MAX,1}\cdot c^T}{l_{T_{o,1}}}$'),fontsize=14)
+        (r'and    $k = \frac{F_{MAX,1}\cdot c^T}{l_{T_{o,1}}}$'),fontsize=14)
     axes1[1][1].axis('off')
 
     fig2,axes2 = plt.subplots(2,2,figsize=(10,8))
@@ -386,7 +388,9 @@ def plot_l_m_approximation_error_vs_tendon_tension(t,TotalX,Error,**kwargs):
     axes2[1][0].set_yticks(-np.array(list(range(N_seconds+1))))
     axes2[1][0].set_yticklabels([str(-el) for el in axes1[1][0].get_yticks()])
     axes2[1][1].text(0.1,0.65,
-        (r'error $= \frac{\tau}{k}\cdot\ln\left(\frac{e^{T_{2}(t)/\tau} - 1}{e^{T_{2}(0)/\tau} - 1} \right ) - (1 - \cos(\alpha_{2})) \right[ l_{m,2}(t) - l_{m,2}(0) \left]$'),fontsize=20)
+        (r'error $= \frac{\tau}{k}\cdot\ln\left(\frac{e^{T_{2}(t)/\tau} - 1}{e^{T_{2}(0)/\tau} - 1} \right )$'),fontsize=20)
+    axes2[1][1].text(0.1,0.5,
+        (r'    - $(1 - \cos(\alpha_{1}))\left[l_{m,1}(t) - l_{m,1}(0) \right]$'), fontsize=16)
     axes2[1][1].text(0.175,0.4,
         (r'where,    $\tau = F_{MAX,2}\cdot c^T \cdot k^T$'),fontsize=14)
     axes2[1][1].text(0.175,0.2,

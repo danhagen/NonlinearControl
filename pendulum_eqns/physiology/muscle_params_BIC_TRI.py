@@ -93,10 +93,9 @@ def F_PE1_1(X):
 
 TRI_Settings = AllMuscleSettings["TRI"]
 
-α2 = 0 # rads
-# α2 = unit_conversion(
-# 	return_primary_source(
-# 		TRI_Settings["Pennation Angle"])) # rads
+α2 = unit_conversion(
+	return_primary_source(
+		TRI_Settings["Pennation Angle"])) # rads
 m2 = unit_conversion(
 	return_primary_source(
 		TRI_Settings["Mass"])) # kg
