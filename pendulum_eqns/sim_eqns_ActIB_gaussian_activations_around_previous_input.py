@@ -433,8 +433,6 @@ def plot_l_m_error_manifold(t,TotalX,Error,**kwargs):
     assert all(np.array([str(type(el))=="<class 'numpy.ndarray'>" for el in InitialTensions])), "All elements of InitialTensions must be a numpy.ndarray."
 
     NumberOfTensionTrials = len(InitialTensions)
-    TendonTension1 = np.linspace(0.01*F_MAX1,0.9*F_MAX1,1001)
-    TendonTension2 = np.linspace(0.01*F_MAX2,0.9*F_MAX2,1001)
 
     fig1 = plt.figure(figsize=(10,8))
     axes1_1 = fig1.add_subplot(221, projection='3d')
@@ -496,7 +494,7 @@ def plot_l_m_error_manifold(t,TotalX,Error,**kwargs):
         MinimumTension2 = TotalX[:,3,:].min()
         MaximumTension2 = TotalX[:,3,:].max()
         Tension2Range = TotalX[:,3,:].max() - TotalX[:,3,:].min()
-        MuscleTension2 = np.linspace(
+        TendonTension2 = np.linspace(
                     MinimumTension2 - 0.05*Tension2Range,
                     MaximumTension2 + 0.05*Tension2Range,
                     1001
