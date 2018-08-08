@@ -2,9 +2,10 @@ from pendulum_eqns.sim_eqns_ActIB_gaussian_activations_around_previous_input imp
 from useful_functions import *
 import pickle
 
-NumberOfTensionTrials = 4
+NumberOfTensionTrials = 8
 X_o = np.array([r(0),dr(0)])
-InitialTensions = return_initial_tension(X_o,ReturnMultipleInitialTensions=True)
+# InitialTensions = return_initial_tension(X_o,ReturnMultipleInitialTensions=True)
+InitialTensions = [return_initial_tension(X_o)]*10
 NumberOfTensionTrials = len(InitialTensions)
 InitialTensionsFromSuccessfulTrials = []
 TerminalWidth = get_terminal_width()
