@@ -3,8 +3,14 @@ from useful_functions import *
 import pickle
 
 X_o = np.array([r(0),dr(0)])
-# InitialTensions = return_initial_tension(X_o,ReturnMultipleInitialTensions=True) # len::8
-InitialTensions = [return_initial_tension(X_o)]*10
+InitialTensionsMaximumPercentage = 0.01
+InitialTensions = return_initial_tension(
+                        X_o,
+                        ReturnMultipleInitialTensions=True,
+                        Bounds=[[0,InitialTensionsMaximumPercentage*F_MAX1],
+                                [0,InitialTensionsMaximumPercentage*F_MAX2]]
+                        ) # len::8
+# InitialTensions = [return_initial_tension(X_o)]*10
 NumberOfTensionTrials = len(InitialTensions)
 InitialTensionsFromSuccessfulTrials = []
 TerminalWidth = get_terminal_width()

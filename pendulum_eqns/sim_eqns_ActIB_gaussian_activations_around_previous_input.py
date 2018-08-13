@@ -89,7 +89,8 @@ def return_U_gaussian_activations_nearby(i,t,X,U,**kwargs):
         					AllowableBounds_x[1],\
         					SortedAllowableBounds[1]\
         				)
-        assert UpperBound_x >= LowerBound_x, "Error generating bounds. Not feasible!"
+
+        # assert UpperBound_x >= LowerBound_x, "Error generating bounds. Not feasible!"
 
         SortedBounds_y = np.sort(
             [Constraint1/Coefficient2 - (Coefficient1/Coefficient2)*x_bound \
@@ -98,12 +99,10 @@ def return_U_gaussian_activations_nearby(i,t,X,U,**kwargs):
         LowerBound_y = SortedBounds_y[0]
         UpperBound_y = SortedBounds_y[1]
 
-    mu = 0
-    sigma = 0.000625
-    Feasible = False
-    count = 0
-    while Feasible == False:
-        Next_U = (1/(Coefficient1**2+Coefficient2**2))\
+    if (LowerBound_x >= Bounds[0][1]) \
+        or (UpperBound_x <= Bounds[0][0]):
+
+        ClosestU = (1/(Coefficient1**2+Coefficient2**2))\
                     *(
                         np.matrix([[Coefficient1],[Coefficient2]])
                         *(
@@ -112,29 +111,58 @@ def return_U_gaussian_activations_nearby(i,t,X,U,**kwargs):
                                 * np.matrix([[U[0]],[U[1]]])
                         )
                     ) \
-                + np.random.normal(mu,sigma) \
-                    * np.matrix([[Coefficient2],[-Coefficient1]]) \
-                    / np.sqrt(Coefficient1**2 + Coefficient2**2) \
-                + np.matrix([[U[0]],[U[1]]])
-        if (LowerBound_x <= Next_U[0,0] <= UpperBound_x) \
-            and (LowerBound_y <= Next_U[1,0] <= UpperBound_y):
-            Feasible = True
-        else:
-            count += 1
-            if count > 100:
-                Next_U = (1/(Coefficient1**2+Coefficient2**2))\
-                            *(
-                                np.matrix([[Coefficient1],[Coefficient2]])
-                                *(
-                                    Constraint1
-                                    - np.matrix([[Coefficient1,Coefficient2]])
-                                        * np.matrix([[U[0]],[U[1]]])
-                                )
-                            ) \
-                        + np.matrix([[U[0]],[U[1]]])
-                raise Exception("Hard time finding next input. Try increasing sigma (Currently: sigma = " + str(sigma) + ").")
+                    + np.matrix([[U[0]],[U[1]]])
+        LB_x = max(Bounds[0][0],(Constraint1-Coefficient2*Bounds[1][0])/Coefficient1)
+        LB_y = (Constraint1-Coefficient1*LB_x)/Coefficient2
 
-    return(np.array([Next_U[0,0],Next_U[1,0]]))
+        UB_x = min(Bounds[0][1],(Constraint1-Coefficient2*Bounds[1][1])/Coefficient1)
+        UB_y = (Constraint1-Coefficient1*UB_x)/Coefficient2
+        ClosestU_to_LB = (np.array([ClosestU[0,0],ClosestU[1,0]])
+                            - np.array([LB_x,LB_y]))
+        ClosestU_to_UB = (np.array([ClosestU[0,0],ClosestU[1,0]])
+                            - np.array([UB_x,UB_y]))
+        if np.linalg.norm(ClosestU_to_LB) < np.linalg.norm(ClosestU_to_UB):
+            NextU = np.array([LB_x,LB_y])
+        else:
+            NextU = np.array([UB_x,UB_y])
+    else:
+        mu = 0
+        sigma = 0.000625
+        Feasible = False
+        count = 0
+        while Feasible == False:
+            Next_U = (1/(Coefficient1**2+Coefficient2**2))\
+                        *(
+                            np.matrix([[Coefficient1],[Coefficient2]])
+                            *(
+                                Constraint1
+                                - np.matrix([[Coefficient1,Coefficient2]])
+                                    * np.matrix([[U[0]],[U[1]]])
+                            )
+                        ) \
+                    + np.random.normal(mu,sigma) \
+                        * np.matrix([[Coefficient2],[-Coefficient1]]) \
+                        / np.sqrt(Coefficient1**2 + Coefficient2**2) \
+                    + np.matrix([[U[0]],[U[1]]])
+            if (LowerBound_x <= Next_U[0,0] <= UpperBound_x) \
+                and (LowerBound_y <= Next_U[1,0] <= UpperBound_y):
+                Feasible = True
+            else:
+                count += 1
+                if count > 100:
+                    Next_U = (1/(Coefficient1**2+Coefficient2**2))\
+                                *(
+                                    np.matrix([[Coefficient1],[Coefficient2]])
+                                    *(
+                                        Constraint1
+                                        - np.matrix([[Coefficient1,Coefficient2]])
+                                            * np.matrix([[U[0]],[U[1]]])
+                                    )
+                                ) \
+                            + np.matrix([[U[0]],[U[1]]])
+                    raise Exception("Hard time finding next input. Try increasing sigma (Currently: sigma = " + str(sigma) + ").")
+        NextU = np.array([Next_U[0,0],Next_U[1,0]])
+    return(NextU)
 
 def run_sim_gauss_act(**kwargs):
     """
