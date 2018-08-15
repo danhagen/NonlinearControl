@@ -160,7 +160,8 @@ def return_U_gaussian_activations_nearby(i,t,X,U,**kwargs):
                                     )
                                 ) \
                             + np.matrix([[U[0]],[U[1]]])
-                    raise Exception("Hard time finding next input. Try increasing sigma (Currently: sigma = " + str(sigma) + ").")
+                    Feasible=True
+                    # raise Exception("Hard time finding next input. Try increasing sigma (Currently: sigma = " + str(sigma) + ").")
         NextU = np.array([Next_U[0,0],Next_U[1,0]])
     return(NextU)
 
@@ -294,7 +295,7 @@ def plot_N_sim_gauss_act(t,TotalX,TotalU,**kwargs):
         plt.plot(t,(TotalX[j,0,:])*180/np.pi,'0.70',lw=2)
         statusbar.update(j)
     plt.plot(np.linspace(0,t[-1],1001),\
-        	(r(np.linspace(0,t[-1],1001)))*180/np.pi,\
+        	np.array([r(el) for el in np.linspace(0,t[-1],1001)])*180/np.pi,\
                'r')
     plt.xlabel("Time (s)")
     plt.ylabel("Desired Measure (Deg)")
@@ -304,7 +305,7 @@ def plot_N_sim_gauss_act(t,TotalX,TotalU,**kwargs):
     plt.title(fig2_title)
     statusbar.reset(title=(plot_N_sim_gauss_act.__name__ + " (" + fig2_title +")"))
     for j in range(np.shape(TotalX)[0]):
-        plt.plot(t, (r(t)-TotalX[j,0,:])*180/np.pi,color='0.70')
+        plt.plot(t, (np.array([r(el) for el in t])-TotalX[j,0,:])*180/np.pi,color='0.70')
         statusbar.update(j)
     plt.xlabel("Time (s)")
     plt.ylabel("Error (Deg)")
