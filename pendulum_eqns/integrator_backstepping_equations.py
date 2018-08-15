@@ -1,4 +1,4 @@
-from pendulum_eqns.reference_trajectories._02 import *
+from pendulum_eqns.reference_trajectories._01 import *
 from pendulum_eqns.state_equations import *
 
 scatchwork_destination = r"~/Documents/Github/NonlinearControl/background_materials_and_methods/iintegrator_backstepping_equations"

@@ -1,0 +1,3 @@
+managed to get the drifting down a little. There is no emphasis placed on feasible transitions, just the idea that transitions must only deviate by plus/minus a certain amount from the nearest option. (This still has no momentum terms...)
+
+The values of activations are quite small, but as a result with the error function, the deviations are largest at the onset of the movement.

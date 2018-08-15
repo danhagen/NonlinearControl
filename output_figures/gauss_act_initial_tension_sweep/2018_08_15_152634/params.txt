@@ -1,0 +1,5 @@
+The error functions seem to be jumping to different tiers. This may be because of errors in integration. We will see what happens when we increase the dt to 0.0002.
+
+Additionally, the drift does not seem to continue after the first few oscillations and the initial error is nonexistent..
+
+Using reference_trajectories._01

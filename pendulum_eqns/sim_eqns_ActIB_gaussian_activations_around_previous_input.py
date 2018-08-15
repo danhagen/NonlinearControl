@@ -5,8 +5,8 @@ from termcolor import cprint,colored
 from danpy.sb import dsb,get_terminal_width
 from pendulum_eqns.init_muscle_activation_controlled_model import *
 
-N_seconds = 4
-N = N_seconds*10000 + 1
+N_seconds = 10
+N = N_seconds*5000 + 1
 Time = np.linspace(0,N_seconds,N)
 dt = Time[1]-Time[0]
 
@@ -131,7 +131,7 @@ def return_U_gaussian_activations_nearby(i,t,X,U,**kwargs):
         Feasible = False
         count = 0
         while Feasible == False:
-            Next_U = (1/(Coefficient1**2+Coefficient2**2))\
+            ClosestU = (1/(Coefficient1**2+Coefficient2**2))\
                         *(
                             np.matrix([[Coefficient1],[Coefficient2]])
                             *(
@@ -140,28 +140,43 @@ def return_U_gaussian_activations_nearby(i,t,X,U,**kwargs):
                                     * np.matrix([[U[0]],[U[1]]])
                             )
                         ) \
-                    + np.random.normal(mu,sigma) \
-                        * np.matrix([[Coefficient2],[-Coefficient1]]) \
-                        / np.sqrt(Coefficient1**2 + Coefficient2**2) \
-                    + np.matrix([[U[0]],[U[1]]])
-            if (LowerBound_x <= Next_U[0,0] <= UpperBound_x) \
-                and (LowerBound_y <= Next_U[1,0] <= UpperBound_y):
-                Feasible = True
-            else:
-                count += 1
-                if count > 100:
-                    Next_U = (1/(Coefficient1**2+Coefficient2**2))\
-                                *(
-                                    np.matrix([[Coefficient1],[Coefficient2]])
-                                    *(
-                                        Constraint1
-                                        - np.matrix([[Coefficient1,Coefficient2]])
-                                            * np.matrix([[U[0]],[U[1]]])
-                                    )
-                                ) \
-                            + np.matrix([[U[0]],[U[1]]])
-                    Feasible=True
-                    # raise Exception("Hard time finding next input. Try increasing sigma (Currently: sigma = " + str(sigma) + ").")
+                        + np.matrix([[U[0]],[U[1]]])
+            if (ClosestU>=0).all():
+                AllPositive=False
+                while AllPositive==False:
+                    Next_U = ClosestU \
+                            + np.random.normal(mu,sigma) \
+                                * np.matrix([[Coefficient2],[-Coefficient1]]) \
+                                / np.sqrt(Coefficient1**2 + Coefficient2**2)
+                    if (Next_U>=0).all():
+                        AllPositive=True
+            elif (ClosestU<=0).any():
+                LB_x = max(Bounds[0][0],(Constraint1-Coefficient2*Bounds[1][0])/Coefficient1)
+                LB_y = (Constraint1-Coefficient1*LB_x)/Coefficient2
+                Next_U = np.array([[LB_x],[LB_y]])
+            elif (ClosestU>=1).any():
+                UB_x = min(Bounds[0][1],(Constraint1-Coefficient2*Bounds[1][1])/Coefficient1)
+                UB_y = (Constraint1-Coefficient1*UB_x)/Coefficient2
+                Next_U = np.array([[UB_x],[UB_y]])
+            Feasible=True
+            # if (LowerBound_x <= Next_U[0,0] <= UpperBound_x) \
+            #     and (LowerBound_y <= Next_U[1,0] <= UpperBound_y):
+            #     Feasible = True
+            # else:
+            #     count += 1
+            #     if count > 100:
+            #         Next_U = (1/(Coefficient1**2+Coefficient2**2))\
+            #                     *(
+            #                         np.matrix([[Coefficient1],[Coefficient2]])
+            #                         *(
+            #                             Constraint1
+            #                             - np.matrix([[Coefficient1,Coefficient2]])
+            #                                 * np.matrix([[U[0]],[U[1]]])
+            #                         )
+            #                     ) \
+            #                 + np.matrix([[U[0]],[U[1]]])
+            #         Feasible=True
+            #         # raise Exception("Hard time finding next input. Try increasing sigma (Currently: sigma = " + str(sigma) + ").")
         NextU = np.array([Next_U[0,0],Next_U[1,0]])
     return(NextU)
 

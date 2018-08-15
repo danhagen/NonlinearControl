@@ -1,0 +1,1 @@
+decreasing the timestep seems to solve the issue of the error deviating from the defined function. But, we still see some drift... dont know why this is drifting... might need to hardcode a preference in whichever direction will decrease the activation.

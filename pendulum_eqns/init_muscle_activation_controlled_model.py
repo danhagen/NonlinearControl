@@ -2,7 +2,7 @@ from pendulum_eqns.integrator_backstepping_equations import *
 from pendulum_eqns.initial_tension import *
 from pendulum_eqns.physiology.muscle_params_BIC_TRI import *
 
-MaxStep_Activation = 0.003125 # percentage of positive maximum (1)
+MaxStep_Activation = 0.0015625 # percentage of positive maximum (1)
 Activation_Bounds = [[0,1],[0,1]]
 
 def return_constraint_variables(t,X):
@@ -78,11 +78,33 @@ def return_random_initial_muscle_lengths_and_activations(InitialTension,**kwargs
 						np.where(L1<=thresh1),
 						np.where(L2<=thresh2)
 						)
+	assert len(PositiveIndeces)>0, \
+			("Error finding positive activations for given tension levels\nMuscle 1: "
+			+ str(InitialTension[0][0])
+			+ "\nMuscle 2: "
+			+ str(InitialTension[1][0])
+			)
+
 	if PlotBool == True:
 		plt.figure(figsize=(10,8))
 		plt.title(r"Viable Initial $l_{m,1}$ and $u_{1}$ Values")
 		plt.xlabel(r"$l_{m,1}$ (m)",fontsize=14)
 		plt.ylabel(r"$u_{1}$",fontsize=14)
+		L1_range = L1.max()-L1.min()
+		L1_linspace = np.linspace(0.5*lo1,1.5*lo1,1001)
+		U1_linspace = np.array(
+				list(
+					map(
+						lambda l:
+							(InitialTension[0][0]/(F_MAX1*np.cos(α1))
+							- F_PE1_1([0,0,0,0,l,0,0,0])
+							)
+							/ FL(l,lo1)
+						,L1_linspace
+					)
+				)
+			)
+		plt.plot(L1_linspace,U1_linspace,'k')
 		plt.scatter(L1[PositiveIndeces],U1[PositiveIndeces])
 		plt.plot([lo1,lo1],[0,1],'0.70',linestyle='--')
 		plt.gca().set_ylim((0,1))
@@ -109,6 +131,21 @@ def return_random_initial_muscle_lengths_and_activations(InitialTension,**kwargs
 		plt.title(r"Viable Initial $l_{m,2}$ and $u_{2}$ Values")
 		plt.xlabel(r"$l_{m,2}$ (m)",fontsize=14)
 		plt.ylabel(r"$u_{2}$",fontsize=14)
+		L2_range = L2.max()-L2.min()
+		L2_linspace = np.linspace(0.5*lo2,1.5*lo2,1001)
+		U2_linspace = np.array(
+				list(
+					map(
+						lambda l:
+							(InitialTension[1][0]/(F_MAX2*np.cos(α2))
+							- F_PE1_2([0,0,0,0,0,l,0,0])
+							)
+							/ FL(l,lo2)
+						,L2_linspace
+					)
+				)
+			)
+		plt.plot(L2_linspace,U2_linspace,'k')
 		plt.scatter(L2[PositiveIndeces],U2[PositiveIndeces])
 		plt.plot([lo2,lo2],[0,1],'0.70',linestyle='--')
 		plt.gca().set_ylim((0,1))
@@ -137,7 +174,6 @@ def return_random_initial_muscle_lengths_and_activations(InitialTension,**kwargs
 			L2[PositiveIndeces],
 			U2[PositiveIndeces]
 			)
-
 
 def find_viable_initial_values(**kwargs):
 	"""
