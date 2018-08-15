@@ -10,6 +10,7 @@ InitialTensions = return_initial_tension(
                         Bounds=[[0,InitialTensionsMaximumPercentage*F_MAX1],
                                 [0,InitialTensionsMaximumPercentage*F_MAX2]]
                         ) # len::8
+InitialTensions = InitialTensions[:4]
 # InitialTensions = [return_initial_tension(X_o)]*10
 NumberOfTensionTrials = len(InitialTensions)
 InitialTensionsFromSuccessfulTrials = []
