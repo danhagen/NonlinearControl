@@ -1,0 +1,5 @@
+created a new function (find activation gauss v2), that preferentially selected activation levels that were lower over time subject to MaxStep=default.
+
+Appears to keep the activations low, which keeps the errors in a bizarre range. Maybe we just need to do the optimal control (ability to shut off muscles) that creates regions when the error is quite large.
+
+ 

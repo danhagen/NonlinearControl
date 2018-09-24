@@ -2,7 +2,7 @@ from pendulum_eqns.integrator_backstepping_equations import *
 from pendulum_eqns.initial_tension import *
 from pendulum_eqns.physiology.muscle_params_BIC_TRI import *
 
-MaxStep_Activation = 0.0015625 # percentage of positive maximum (1)
+MaxStep_Activation = 1 # percentage of positive maximum (1)
 Activation_Bounds = [[0,1],[0,1]]
 
 def return_constraint_variables(t,X):

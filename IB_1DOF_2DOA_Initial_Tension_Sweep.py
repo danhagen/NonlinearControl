@@ -9,7 +9,7 @@ InitialTensions = return_initial_tension(
                         ReturnMultipleInitialTensions=True,
                         Bounds=[[0,InitialTensionsMaximumPercentage*F_MAX1],
                                 [0,InitialTensionsMaximumPercentage*F_MAX2]]
-                        ) # len::8
+                        )[:2] # len::8
 # InitialTensions = [return_initial_tension(
 #                         X_o,
 #                         Bounds=[[0,InitialTensionsMaximumPercentage*F_MAX1],

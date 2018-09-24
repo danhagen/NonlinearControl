@@ -1,0 +1,4 @@
+ran with v2 of find next U gauss, randomized IC but the output does not look to be where it should be. Perhaps each trial should already start with the smallest activation magnitude to avoid the convergence to lower cost steady state. 
+
+Code still seems to be approaching optimal control over time. Would need to run higher IC activation to observe convergence to zero activation phase when opposing movement. 
+

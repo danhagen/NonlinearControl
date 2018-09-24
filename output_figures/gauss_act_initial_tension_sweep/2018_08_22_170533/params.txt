@@ -1,0 +1,3 @@
+removed F_V relationship (set to unity)
+
+Did not change the tendency to increase concontraction.

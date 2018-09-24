@@ -1,16 +1,216 @@
 import numpy as np
+import cvxopt
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from termcolor import cprint,colored
 from danpy.sb import dsb,get_terminal_width
 from pendulum_eqns.init_muscle_activation_controlled_model import *
 
-N_seconds = 10
-N = N_seconds*5000 + 1
+N_seconds = 1
+N = N_seconds*1000 + 1
 Time = np.linspace(0,N_seconds,N)
 dt = Time[1]-Time[0]
 
 def return_U_gaussian_activations_nearby(i,t,X,U,**kwargs):
+    """
+    Takes in current step (i), numpy.ndarray of time (t) of shape (N,), state numpy.ndarray (X) of shape (8,), and previous input numpy.ndarray (U) of shape (2,) and returns the input for this time step.
+
+    First attempt will see what happens when the activations are restricted to the positive real domain.
+
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    **kwargs
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    1) Noise - must be an numpy.ndarray of shape (2,). Default is np.zeros((1,2)).
+
+    2) Seed - must be a scalar value. Default is None.
+
+    3) Bounds - must be a (2,2) list with each row in ascending order. Default is given by Activation_Bounds.
+
+    4) MaxStep - must be a scalar (int or float). Default is MaxStep_Activation.
+
+    """
+    import random
+    import numpy as np
+    assert (np.shape(t) == (len(t),)) and (str(type(t)) == "<class 'numpy.ndarray'>"),\
+     	"t must be a numpy.ndarray of shape (len(t),)."
+    assert np.shape(X) == (8,) and str(type(X)) == "<class 'numpy.ndarray'>", "X must be a (8,) numpy.ndarray"
+    assert np.shape(U) == (2,) and str(type(U)) == "<class 'numpy.ndarray'>", "U must be a (2,) numpy.ndarray"
+
+    Noise = kwargs.get("Noise",np.zeros((2,)))
+    assert np.shape(Noise) == (2,) and str(type(Noise)) == "<class 'numpy.ndarray'>", "Noise must be a (2,) numpy.ndarray"
+
+    Seed = kwargs.get("Seed",None)
+    assert type(Seed) in [float,int] or Seed is None, "Seed must be a float or an int or None."
+    if Seed is not None:
+    	np.random.seed(Seed)
+
+    Bounds = kwargs.get("Bounds",Activation_Bounds)
+    assert type(Bounds) == list and np.shape(Bounds) == (2,2), "Bounds for Muscle Activation Control must be a (2,2) list."
+    assert Bounds[0][0]<Bounds[0][1],"Each set of bounds must be in ascending order."
+    assert Bounds[1][0]<Bounds[1][1],"Each set of bounds must be in ascending order."
+
+    MaxStep = kwargs.get("MaxStep",MaxStep_Activation)
+    assert type(MaxStep) in [int,float], "MaxStep for Muscle Activation Controller should be an int or float."
+
+    Coefficient1,Coefficient2,Constraint1 = return_constraint_variables(t[i],X)
+    assert Coefficient1!=0 and Coefficient2!=0, "Error with Coefficients. Shouldn't both be zero"
+    if Constraint1 < 0:
+    	assert not(Coefficient1 > 0 and Coefficient2 > 0), "Infeasible activations. (Constraint1 < 0, Coefficient1 > 0, Coefficient2 > 0)"
+    if Constraint1 > 0:
+    	assert not(Coefficient1 < 0 and Coefficient2 < 0), "Infeasible activations. (Constraint1 > 0, Coefficient1 < 0, Coefficient2 < 0)"
+
+    # AllowableBounds_x = np.array([U[0]-MaxStep,U[0]+MaxStep])
+    # AllowableBounds_y = np.array([U[1]-MaxStep,U[1]+MaxStep])
+    cvxopt.solvers.options['show_progress'] = False
+    costWeights = [1,0] # sums to 1
+    I2 = cvxopt.matrix([1.0,0.0,0.0,1.0],(2,2))
+    Q = (sum(costWeights)/2)*I2
+    p = costWeights[1]*cvxopt.matrix([-U[0],-U[1]])
+    G = cvxopt.matrix([-I2,I2,-I2,I2])
+    h = cvxopt.matrix([-Bounds[0][0],-Bounds[1][0],Bounds[0][1],Bounds[1][1],\
+                -U[0]+MaxStep,-U[1]+MaxStep,U[0]+MaxStep,U[1]+MaxStep])
+    A = cvxopt.matrix([Coefficient1,Coefficient2], (1,2))
+    b = cvxopt.matrix(Constraint1)
+    sol=cvxopt.solvers.qp(Q, p, G, h, A, b)
+    assert sol['status']=='optimal', "CVXOPT solution is not optimal."
+    NextU = np.array([sol['x'][0],sol['x'][1]])
+    # if Coefficient1 == 0:
+    #     LowerBound_x = max(Bounds[0][0],AllowbaleBounds_x[0])
+    #     UpperBound_x = min(Bounds[0][1],AllowbaleBounds_x[1])
+    #     LowerBound_y = Constraint1/Coefficient2
+    #     UpperBound_y = Constraint1/Coefficient2
+    # elif Coefficient2 == 0:
+    #     LowerBound_x = Constraint1/Coefficient1
+    #     UpperBound_x = Constraint1/Coefficient1
+    #     LowerBound_y = max(Bounds[1][0],AllowableBounds_y[0])
+    #     UpperBound_y = min(Bounds[1][1],AllowableBounds_y[1])
+    # else:
+    #     SortedAllowableBounds = np.sort([\
+    #     							(Constraint1-Coefficient2*AllowableBounds_y[0])/Coefficient1,\
+    #     							(Constraint1-Coefficient2*AllowableBounds_y[1])/Coefficient1\
+    #     							])
+    #     SortedBounds = np.sort([(Constraint1-Coefficient2*Bounds[1][0])/Coefficient1,\
+    #     							(Constraint1-Coefficient2*Bounds[1][1])/Coefficient1])
+    #     LowerBound_x = max(	Bounds[0][0],\
+    #      					SortedBounds[0],\
+    #     					AllowableBounds_x[0],\
+    #     					SortedAllowableBounds[0]\
+    #     				)
+    #     UpperBound_x = min(	Bounds[0][1],\
+    #      					SortedBounds[1],\
+    #     					AllowableBounds_x[1],\
+    #     					SortedAllowableBounds[1]\
+    #     				)
+    #
+    #     # assert UpperBound_x >= LowerBound_x, "Error generating bounds. Not feasible!"
+    #
+    #     SortedBounds_y = np.sort(
+    #         [Constraint1/Coefficient2 - (Coefficient1/Coefficient2)*x_bound \
+    #             for x_bound in [LowerBound_x,UpperBound_x]]
+    #         )
+    #     LowerBound_y = SortedBounds_y[0]
+    #     UpperBound_y = SortedBounds_y[1]
+
+    # LB_x = max(Bounds[0][0],(Constraint1-Coefficient2*Bounds[1][0])/Coefficient1)
+    # LB_y = (Constraint1-Coefficient1*LB_x)/Coefficient2
+    # NextU = np.array([LB_x,LB_y])
+
+    # ClosestU = (1/(Coefficient1**2+Coefficient2**2))\
+    #              *(
+    #                  np.matrix([[Coefficient1],[Coefficient2]])
+    #                  *(
+    #                      Constraint1
+    #                      - np.matrix([[Coefficient1,Coefficient2]])
+    #                          * np.matrix([[U[0]],[U[1]]])
+    #                  )
+    #              ) \
+    #              + np.matrix([[U[0]],[U[1]]])
+    # NextU = np.array([ClosestU[0,0],ClosestU[1,0]])
+
+    #
+    # if (LowerBound_x >= Bounds[0][1]) \
+    #     or (UpperBound_x <= Bounds[0][0]):
+    #
+    #     ClosestU = (1/(Coefficient1**2+Coefficient2**2))\
+    #                 *(
+    #                     np.matrix([[Coefficient1],[Coefficient2]])
+    #                     *(
+    #                         Constraint1
+    #                         - np.matrix([[Coefficient1,Coefficient2]])
+    #                             * np.matrix([[U[0]],[U[1]]])
+    #                     )
+    #                 ) \
+    #                 + np.matrix([[U[0]],[U[1]]])
+    #     LB_x = max(Bounds[0][0],(Constraint1-Coefficient2*Bounds[1][0])/Coefficient1)
+    #     LB_y = (Constraint1-Coefficient1*LB_x)/Coefficient2
+    #
+    #     UB_x = min(Bounds[0][1],(Constraint1-Coefficient2*Bounds[1][1])/Coefficient1)
+    #     UB_y = (Constraint1-Coefficient1*UB_x)/Coefficient2
+    #     ClosestU_to_LB = (np.array([ClosestU[0,0],ClosestU[1,0]])
+    #                         - np.array([LB_x,LB_y]))
+    #     ClosestU_to_UB = (np.array([ClosestU[0,0],ClosestU[1,0]])
+    #                         - np.array([UB_x,UB_y]))
+    #     if np.linalg.norm(ClosestU_to_LB) < np.linalg.norm(ClosestU_to_UB):
+    #         NextU = np.array([LB_x,LB_y])
+    #     else:
+    #         NextU = np.array([UB_x,UB_y])
+    # else:
+    #     mu = 0
+    #     sigma = 0.000625
+    #     Feasible = False
+    #     count = 0
+    #     while Feasible == False:
+    #         ClosestU = (1/(Coefficient1**2+Coefficient2**2))\
+    #                     *(
+    #                         np.matrix([[Coefficient1],[Coefficient2]])
+    #                         *(
+    #                             Constraint1
+    #                             - np.matrix([[Coefficient1,Coefficient2]])
+    #                                 * np.matrix([[U[0]],[U[1]]])
+    #                         )
+    #                     ) \
+    #                     + np.matrix([[U[0]],[U[1]]])
+    #         if (ClosestU>=0).all():
+    #             AllPositive=False
+    #             while AllPositive==False:
+    #                 Next_U = ClosestU \
+    #                         + np.random.normal(mu,sigma) \
+    #                             * np.matrix([[Coefficient2],[-Coefficient1]]) \
+    #                             / np.sqrt(Coefficient1**2 + Coefficient2**2)
+    #                 if (Next_U>=0).all():
+    #                     AllPositive=True
+    #         elif (ClosestU<=0).any():
+    #             LB_x = max(Bounds[0][0],(Constraint1-Coefficient2*Bounds[1][0])/Coefficient1)
+    #             LB_y = (Constraint1-Coefficient1*LB_x)/Coefficient2
+    #             Next_U = np.array([[LB_x],[LB_y]])
+    #         elif (ClosestU>=1).any():
+    #             UB_x = min(Bounds[0][1],(Constraint1-Coefficient2*Bounds[1][1])/Coefficient1)
+    #             UB_y = (Constraint1-Coefficient1*UB_x)/Coefficient2
+    #             Next_U = np.array([[UB_x],[UB_y]])
+    #         Feasible=True
+    #         # if (LowerBound_x <= Next_U[0,0] <= UpperBound_x) \
+    #         #     and (LowerBound_y <= Next_U[1,0] <= UpperBound_y):
+    #         #     Feasible = True
+    #         # else:
+    #         #     count += 1
+    #         #     if count > 100:
+    #         #         Next_U = (1/(Coefficient1**2+Coefficient2**2))\
+    #         #                     *(
+    #         #                         np.matrix([[Coefficient1],[Coefficient2]])
+    #         #                         *(
+    #         #                             Constraint1
+    #         #                             - np.matrix([[Coefficient1,Coefficient2]])
+    #         #                                 * np.matrix([[U[0]],[U[1]]])
+    #         #                         )
+    #         #                     ) \
+    #         #                 + np.matrix([[U[0]],[U[1]]])
+    #         #         Feasible=True
+    #         #         # raise Exception("Hard time finding next input. Try increasing sigma (Currently: sigma = " + str(sigma) + ").")
+        # NextU = np.array([Next_U[0,0],Next_U[1,0]])
+    return(NextU)
+
+def return_U_gaussian_activations_nearby_v2(i,t,X,U,**kwargs):
     """
     Takes in current step (i), numpy.ndarray of time (t) of shape (N,), state numpy.ndarray (X) of shape (8,), and previous input numpy.ndarray (U) of shape (2,) and returns the input for this time step.
 
@@ -92,95 +292,146 @@ def return_U_gaussian_activations_nearby(i,t,X,U,**kwargs):
 
         # assert UpperBound_x >= LowerBound_x, "Error generating bounds. Not feasible!"
 
-        SortedBounds_y = np.sort(
+        LowerBound_y,UpperBound_y = \
             [Constraint1/Coefficient2 - (Coefficient1/Coefficient2)*x_bound \
                 for x_bound in [LowerBound_x,UpperBound_x]]
+
+    # LB_x = max(Bounds[0][0],(Constraint1-Coefficient2*Bounds[1][0])/Coefficient1)
+    # LB_y = (Constraint1-Coefficient1*LB_x)/Coefficient2
+    # NextU = np.array([LB_x,LB_y])
+    mu = np.matrix([[0],[0]])
+    sigma = 1
+    LowerBound = np.matrix([[LowerBound_x],[LowerBound_y]])
+    UpperBound = np.matrix([[UpperBound_x],[UpperBound_y]])
+    phi = (LowerBound-UpperBound)
+    P_l =np.array(
+            list(
+                map(
+                    lambda k: (
+                        (1/(sigma**2*(2*np.pi)))
+                        * np.exp(
+                            -np.linalg.norm(UpperBound+k*phi-mu)**2
+                            /(2*sigma))
+                        ),
+                    np.linspace(0,1,10001)
+                )
             )
-        LowerBound_y = SortedBounds_y[0]
-        UpperBound_y = SortedBounds_y[1]
-
-    if (LowerBound_x >= Bounds[0][1]) \
-        or (UpperBound_x <= Bounds[0][0]):
-
-        ClosestU = (1/(Coefficient1**2+Coefficient2**2))\
-                    *(
-                        np.matrix([[Coefficient1],[Coefficient2]])
-                        *(
-                            Constraint1
-                            - np.matrix([[Coefficient1,Coefficient2]])
-                                * np.matrix([[U[0]],[U[1]]])
-                        )
-                    ) \
-                    + np.matrix([[U[0]],[U[1]]])
-        LB_x = max(Bounds[0][0],(Constraint1-Coefficient2*Bounds[1][0])/Coefficient1)
-        LB_y = (Constraint1-Coefficient1*LB_x)/Coefficient2
-
-        UB_x = min(Bounds[0][1],(Constraint1-Coefficient2*Bounds[1][1])/Coefficient1)
-        UB_y = (Constraint1-Coefficient1*UB_x)/Coefficient2
-        ClosestU_to_LB = (np.array([ClosestU[0,0],ClosestU[1,0]])
-                            - np.array([LB_x,LB_y]))
-        ClosestU_to_UB = (np.array([ClosestU[0,0],ClosestU[1,0]])
-                            - np.array([UB_x,UB_y]))
-        if np.linalg.norm(ClosestU_to_LB) < np.linalg.norm(ClosestU_to_UB):
-            NextU = np.array([LB_x,LB_y])
+        )
+    Probability_along_phi = []
+    Resulting_u1 = []
+    Resulting_u2 = []
+    Under_curve = False
+    count = 0
+    while Under_curve == False:
+        random_number = np.random.uniform()
+        random_probability = np.random.uniform(low=P_l.min(),high=P_l.max())
+        probability_curve =(
+                (1/(sigma**2*(2*np.pi)))
+                * np.exp(
+                    -np.linalg.norm(UpperBound+random_number*phi-mu)**2
+                    /(2*sigma))
+                )
+        if random_probability <= probability_curve:
+            Probability_along_phi.append(random_probability)
+            Random_U = UpperBound+random_number*phi
+            Under_curve = True
         else:
-            NextU = np.array([UB_x,UB_y])
-    else:
-        mu = 0
-        sigma = 0.000625
-        Feasible = False
-        count = 0
-        while Feasible == False:
-            ClosestU = (1/(Coefficient1**2+Coefficient2**2))\
-                        *(
-                            np.matrix([[Coefficient1],[Coefficient2]])
-                            *(
-                                Constraint1
-                                - np.matrix([[Coefficient1,Coefficient2]])
-                                    * np.matrix([[U[0]],[U[1]]])
-                            )
-                        ) \
-                        + np.matrix([[U[0]],[U[1]]])
-            if (ClosestU>=0).all():
-                AllPositive=False
-                while AllPositive==False:
-                    Next_U = ClosestU \
-                            + np.random.normal(mu,sigma) \
-                                * np.matrix([[Coefficient2],[-Coefficient1]]) \
-                                / np.sqrt(Coefficient1**2 + Coefficient2**2)
-                    if (Next_U>=0).all():
-                        AllPositive=True
-            elif (ClosestU<=0).any():
-                LB_x = max(Bounds[0][0],(Constraint1-Coefficient2*Bounds[1][0])/Coefficient1)
-                LB_y = (Constraint1-Coefficient1*LB_x)/Coefficient2
-                Next_U = np.array([[LB_x],[LB_y]])
-            elif (ClosestU>=1).any():
-                UB_x = min(Bounds[0][1],(Constraint1-Coefficient2*Bounds[1][1])/Coefficient1)
-                UB_y = (Constraint1-Coefficient1*UB_x)/Coefficient2
-                Next_U = np.array([[UB_x],[UB_y]])
-            Feasible=True
-            # if (LowerBound_x <= Next_U[0,0] <= UpperBound_x) \
-            #     and (LowerBound_y <= Next_U[1,0] <= UpperBound_y):
-            #     Feasible = True
-            # else:
-            #     count += 1
-            #     if count > 100:
-            #         Next_U = (1/(Coefficient1**2+Coefficient2**2))\
-            #                     *(
-            #                         np.matrix([[Coefficient1],[Coefficient2]])
-            #                         *(
-            #                             Constraint1
-            #                             - np.matrix([[Coefficient1,Coefficient2]])
-            #                                 * np.matrix([[U[0]],[U[1]]])
-            #                         )
-            #                     ) \
-            #                 + np.matrix([[U[0]],[U[1]]])
-            #         Feasible=True
-            #         # raise Exception("Hard time finding next input. Try increasing sigma (Currently: sigma = " + str(sigma) + ").")
-        NextU = np.array([Next_U[0,0],Next_U[1,0]])
+            count+=1
+            Under_curve = False
+    # ClosestU = (1/(Coefficient1**2+Coefficient2**2))\
+    #              *(
+    #                  np.matrix([[Coefficient1],[Coefficient2]])
+    #                  *(
+    #                      Constraint1
+    #                      - np.matrix([[Coefficient1,Coefficient2]])
+    #                          * np.matrix([[U[0]],[U[1]]])
+    #                  )
+    #              ) \
+    #              + np.matrix([[U[0]],[U[1]]])
+    NextU = np.array([Random_U[0,0],Random_U[1,0]])
+    #
+    # if (LowerBound_x >= Bounds[0][1]) \
+    #     or (UpperBound_x <= Bounds[0][0]):
+    #
+    #     ClosestU = (1/(Coefficient1**2+Coefficient2**2))\
+    #                 *(
+    #                     np.matrix([[Coefficient1],[Coefficient2]])
+    #                     *(
+    #                         Constraint1
+    #                         - np.matrix([[Coefficient1,Coefficient2]])
+    #                             * np.matrix([[U[0]],[U[1]]])
+    #                     )
+    #                 ) \
+    #                 + np.matrix([[U[0]],[U[1]]])
+    #     LB_x = max(Bounds[0][0],(Constraint1-Coefficient2*Bounds[1][0])/Coefficient1)
+    #     LB_y = (Constraint1-Coefficient1*LB_x)/Coefficient2
+    #
+    #     UB_x = min(Bounds[0][1],(Constraint1-Coefficient2*Bounds[1][1])/Coefficient1)
+    #     UB_y = (Constraint1-Coefficient1*UB_x)/Coefficient2
+    #     ClosestU_to_LB = (np.array([ClosestU[0,0],ClosestU[1,0]])
+    #                         - np.array([LB_x,LB_y]))
+    #     ClosestU_to_UB = (np.array([ClosestU[0,0],ClosestU[1,0]])
+    #                         - np.array([UB_x,UB_y]))
+    #     if np.linalg.norm(ClosestU_to_LB) < np.linalg.norm(ClosestU_to_UB):
+    #         NextU = np.array([LB_x,LB_y])
+    #     else:
+    #         NextU = np.array([UB_x,UB_y])
+    # else:
+    #     mu = 0
+    #     sigma = 0.000625
+    #     Feasible = False
+    #     count = 0
+    #     while Feasible == False:
+    #         ClosestU = (1/(Coefficient1**2+Coefficient2**2))\
+    #                     *(
+    #                         np.matrix([[Coefficient1],[Coefficient2]])
+    #                         *(
+    #                             Constraint1
+    #                             - np.matrix([[Coefficient1,Coefficient2]])
+    #                                 * np.matrix([[U[0]],[U[1]]])
+    #                         )
+    #                     ) \
+    #                     + np.matrix([[U[0]],[U[1]]])
+    #         if (ClosestU>=0).all():
+    #             AllPositive=False
+    #             while AllPositive==False:
+    #                 Next_U = ClosestU \
+    #                         + np.random.normal(mu,sigma) \
+    #                             * np.matrix([[Coefficient2],[-Coefficient1]]) \
+    #                             / np.sqrt(Coefficient1**2 + Coefficient2**2)
+    #                 if (Next_U>=0).all():
+    #                     AllPositive=True
+    #         elif (ClosestU<=0).any():
+    #             LB_x = max(Bounds[0][0],(Constraint1-Coefficient2*Bounds[1][0])/Coefficient1)
+    #             LB_y = (Constraint1-Coefficient1*LB_x)/Coefficient2
+    #             Next_U = np.array([[LB_x],[LB_y]])
+    #         elif (ClosestU>=1).any():
+    #             UB_x = min(Bounds[0][1],(Constraint1-Coefficient2*Bounds[1][1])/Coefficient1)
+    #             UB_y = (Constraint1-Coefficient1*UB_x)/Coefficient2
+    #             Next_U = np.array([[UB_x],[UB_y]])
+    #         Feasible=True
+    #         # if (LowerBound_x <= Next_U[0,0] <= UpperBound_x) \
+    #         #     and (LowerBound_y <= Next_U[1,0] <= UpperBound_y):
+    #         #     Feasible = True
+    #         # else:
+    #         #     count += 1
+    #         #     if count > 100:
+    #         #         Next_U = (1/(Coefficient1**2+Coefficient2**2))\
+    #         #                     *(
+    #         #                         np.matrix([[Coefficient1],[Coefficient2]])
+    #         #                         *(
+    #         #                             Constraint1
+    #         #                             - np.matrix([[Coefficient1,Coefficient2]])
+    #         #                                 * np.matrix([[U[0]],[U[1]]])
+    #         #                         )
+    #         #                     ) \
+    #         #                 + np.matrix([[U[0]],[U[1]]])
+    #         #         Feasible=True
+    #         #         # raise Exception("Hard time finding next input. Try increasing sigma (Currently: sigma = " + str(sigma) + ").")
+        # NextU = np.array([Next_U[0,0],Next_U[1,0]])
     return(NextU)
 
-def run_sim_gauss_act(**kwargs):
+def run_sim_gauss_act(muscleNumber,**kwargs):
     """
     Runs one simulation for NEARBY ACTIVATION BY GAUSSIAN DISTRIBUTION control.
 
@@ -207,6 +458,14 @@ def run_sim_gauss_act(**kwargs):
         X = np.zeros((8,N))
         InitialTension,InitialMuscleLengths,InitialActivations = \
         	find_viable_initial_values(**kwargs)
+        # InitialMuscleLengths = np.array([[0.12053225, 0.12691199],
+        #                                    [0.11495973, 0.12683474],
+        #                                    [0.08653587, 0.13188068],
+        #                                    [0.12036462, 0.10655035],
+        #                                    [0.12073337, 0.12767482],
+        #                                    [0.11604969, 0.13909836],
+        #                                    [0.11138747, 0.14716161],
+        #                                    [0.10945656, 0.1334904 ]])[muscleNumber]
         X[:,0] = [
         	r(0),
         	dr(0),
@@ -272,7 +531,7 @@ def run_N_sim_gauss_act(**kwargs):
             " "*int(TerminalWidth/2 - len(TrialTitle)/2)
             + colored(TrialTitle,'white',attrs=["underline","bold"])
             )
-        TotalX[j],TotalU[j] = run_sim_gauss_act(**kwargs)
+        TotalX[j],TotalU[j] = run_sim_gauss_act(j,**kwargs)
 
     i=0
     NumberOfSuccessfulTrials = NumberOfTrials
