@@ -1,7 +1,7 @@
 from pendulum_eqns.integrator_backstepping_equations import *
 from pendulum_eqns.initial_tension import *
 
-MaxStep_Activation = 0.003125 # percentage of positive maximum (1)
+MaxStep_Activation = 0.1 # percentage of positive maximum (1)
 Activation_Bounds = [[0,1],[0,1]]
 
 def return_constraint_variables(t,X):
@@ -187,8 +187,8 @@ def animate_input_vs_time(t,X,U,**kwargs):
 	AllowableBounds_y = np.array([U[1,0]-MaxStep,U[1,0]+MaxStep])
 
 	if Coefficient1 == 0:
-		LowerBound_x = max(Bounds[0][0],AllowbaleBounds_x[0])
-		UpperBound_x = min(Bounds[0][1],AllowbaleBounds_x[1])
+		LowerBound_x = max(Bounds[0][0],AllowableBounds_x[0])
+		UpperBound_x = min(Bounds[0][1],AllowableBounds_x[1])
 		LowerBound_y = Constraint1/Coefficient2
 		UpperBound_y = Constraint1/Coefficient2
 		FeasibleInput1 = (UpperBound_x-LowerBound_x)*np.random.rand(1000) + LowerBound_x
@@ -265,8 +265,8 @@ def animate_input_vs_time(t,X,U,**kwargs):
 		AllowableBounds_y = np.array([U[1,i]-MaxStep,U[1,i]+MaxStep])
 
 		if Coefficient1 == 0:
-			LowerBound_x = max(Bounds[0][0],AllowbaleBounds_x[0])
-			UpperBound_x = min(Bounds[0][1],AllowbaleBounds_x[1])
+			LowerBound_x = max(Bounds[0][0],AllowableBounds_x[0])
+			UpperBound_x = min(Bounds[0][1],AllowableBounds_x[1])
 			LowerBound_y = Constraint1/Coefficient2
 			UpperBound_y = Constraint1/Coefficient2
 			FeasibleInput1 = (UpperBound_x-LowerBound_x)*np.random.rand(1000) + LowerBound_x
@@ -339,8 +339,8 @@ def animate_input_vs_time(t,X,U,**kwargs):
 		AllowableBounds_y = np.array([U[1,0]-MaxStep,U[1,0]+MaxStep])
 
 		if Coefficient1 == 0:
-			LowerBound_x = max(Bounds[0][0],AllowbaleBounds_x[0])
-			UpperBound_x = min(Bounds[0][1],AllowbaleBounds_x[1])
+			LowerBound_x = max(Bounds[0][0],AllowableBounds_x[0])
+			UpperBound_x = min(Bounds[0][1],AllowableBounds_x[1])
 			LowerBound_y = Constraint1/Coefficient2
 			UpperBound_y = Constraint1/Coefficient2
 			FeasibleInput1 = (UpperBound_x-LowerBound_x)*np.random.rand(1000) + LowerBound_x

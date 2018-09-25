@@ -4,7 +4,7 @@ import pickle
 
 X_o = np.array([r(0),dr(0)])
 # InitialTensions = return_initial_tension(X_o,ReturnMultipleInitialTensions=True) # len::8
-InitialTensions = [return_initial_tension(X_o)]*10
+InitialTensions = [return_initial_tension(X_o)]
 NumberOfTensionTrials = len(InitialTensions)
 InitialTensionsFromSuccessfulTrials = []
 TerminalWidth = get_terminal_width()

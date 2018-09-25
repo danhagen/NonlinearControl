@@ -1,4 +1,5 @@
 import numpy as np
+import cvxopt
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from termcolor import cprint,colored
@@ -6,9 +7,219 @@ from danpy.sb import dsb,get_terminal_width
 from pendulum_eqns.init_muscle_activation_controlled_model import *
 
 N_seconds = 4
-N = N_seconds*10000 + 1
+N = N_seconds*1000 + 1
 Time = np.linspace(0,N_seconds,N)
 dt = Time[1]-Time[0]
+
+def return_U_gaussian_activations_nearby_v3(i,t,X,U,**kwargs):
+    """
+    Takes in current step (i), numpy.ndarray of time (t) of shape (N,), state numpy.ndarray (X) of shape (8,), and previous input numpy.ndarray (U) of shape (2,) and returns the input for this time step.
+
+    First attempt will see what happens when the activations are restricted to the positive real domain.
+
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    **kwargs
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    1) Noise - must be an numpy.ndarray of shape (2,). Default is np.zeros((1,2)).
+
+    2) Seed - must be a scalar value. Default is None.
+
+    3) Bounds - must be a (2,2) list with each row in ascending order. Default is given by Activation_Bounds.
+
+    4) MaxStep - must be a scalar (int or float). Default is MaxStep_Activation.
+
+    """
+    import random
+    import numpy as np
+    assert (np.shape(t) == (len(t),)) and (str(type(t)) == "<class 'numpy.ndarray'>"),\
+     	"t must be a numpy.ndarray of shape (len(t),)."
+    assert np.shape(X) == (8,) and str(type(X)) == "<class 'numpy.ndarray'>", "X must be a (8,) numpy.ndarray"
+    assert np.shape(U) == (2,) and str(type(U)) == "<class 'numpy.ndarray'>", "U must be a (2,) numpy.ndarray"
+
+    Noise = kwargs.get("Noise",np.zeros((2,)))
+    assert np.shape(Noise) == (2,) and str(type(Noise)) == "<class 'numpy.ndarray'>", "Noise must be a (2,) numpy.ndarray"
+
+    Seed = kwargs.get("Seed",None)
+    assert type(Seed) in [float,int] or Seed is None, "Seed must be a float or an int or None."
+    if Seed is not None:
+    	np.random.seed(Seed)
+
+    Bounds = kwargs.get("Bounds",Activation_Bounds)
+    assert type(Bounds) == list and np.shape(Bounds) == (2,2), "Bounds for Muscle Activation Control must be a (2,2) list."
+    assert Bounds[0][0]<Bounds[0][1],"Each set of bounds must be in ascending order."
+    assert Bounds[1][0]<Bounds[1][1],"Each set of bounds must be in ascending order."
+
+    MaxStep = kwargs.get("MaxStep",MaxStep_Activation)
+    assert type(MaxStep) in [int,float], "MaxStep for Muscle Activation Controller should be an int or float."
+
+    Coefficient1,Coefficient2,Constraint1 = return_constraint_variables(t[i],X)
+    # assert Coefficient1!=0 and Coefficient2!=0, "Error with Coefficients. Shouldn't both be zero"
+    # if Constraint1 < 0:
+    # 	assert not(Coefficient1 > 0 and Coefficient2 > 0), "Infeasible activations. (Constraint1 < 0, Coefficient1 > 0, Coefficient2 > 0)"
+    # if Constraint1 > 0:
+    # 	assert not(Coefficient1 < 0 and Coefficient2 < 0), "Infeasible activations. (Constraint1 > 0, Coefficient1 < 0, Coefficient2 < 0)"
+    """
+    Note on QP from CVXOPT:
+
+    Takes the form:
+
+    min. f(x) = (1/2)*(x^T)*Q*x + p*x
+    s.t. G*x<=h and A*x=b
+
+    When calculating Q, make sure that you DO NOT INCLUDE THE 1/2! The algorithm automatically assumes this value. Therefore, always rearrange f(x) into the most reduced form shown above and then extract Q without the 1/2.
+
+    To show functionality, run this script:
+
+    ```py3
+    import numpy as np
+    import matplotlib.pyplot as plt
+    import cvxopt
+
+    cvxopt.solvers.options['show_progress'] = False
+    Bounds = [[0,1],[0,1]]
+    Coefficient1,Coefficient2,Constraint1 = 1,1,1
+    np.random.seed()
+    U = np.random.rand(2)
+    I2 = cvxopt.matrix([1,0,0,1],(2,2),tc='d')
+
+    Q1 = I2
+    p1 = cvxopt.matrix([-U[0],-U[1]],tc='d')
+    G1 = cvxopt.matrix([-I2,I2])
+    h1 = cvxopt.matrix([-Bounds[0][0],-Bounds[1][0],Bounds[0][1],Bounds[1][1]],tc='d')
+    A1 = cvxopt.matrix([Coefficient1,Coefficient2], (1,2),tc='d')
+    b1 = cvxopt.matrix(Constraint1,tc='d')
+    sol1 = cvxopt.solvers.qp(Q1,p1,G1,h1,A1,b1)
+    X1 = [sol1['x'][0],sol1['x'][1]]
+    print("Next x from min. (0.5)((x-u)^T)I(x-u):\n")
+    print(X1)
+
+    print("\n")
+
+    Q2 = I2
+    p2 = cvxopt.matrix([0,0],tc='d')
+    G2 = cvxopt.matrix([-I2,I2])
+    h2 = cvxopt.matrix([U[0]-Bounds[0][0],U[1]-Bounds[1][0],Bounds[0][1]-U[0],Bounds[1][1]-U[1]],tc='d')
+    A2 = cvxopt.matrix([Coefficient1,Coefficient2], (1,2),tc='d')
+    b2 = cvxopt.matrix(Constraint1-Coefficient1*U[0]-Coefficient2*U[1],tc='d')
+    sol2 = cvxopt.solvers.qp(Q2,p2,G2,h2,A2,b2)
+    X2 = [sol2['x'][0]+U[0],sol2['x'][1]+U[1]]
+    print("Next x from min. (0.5)(\\xi^T)I(\\xi) where \\xi = x-u:\n")
+    print(X2)
+
+    x = np.linspace(0,1,1001)
+    y = np.linspace(0,1,1001)
+    cy = -Coefficient1*x/Coefficient2 + Constraint1/Coefficient2
+    cx = x
+
+    plt.plot([0,1,1,0,0],[0,0,1,1,0],'0.70',linestyle='--')
+    plt.scatter([U[0]],[U[1]],c='r',marker='o')
+    plt.plot(cx,cy,'b')
+    plt.plot([U[0],Coefficient1*(Constraint1 - Coefficient1*U[0]-Coefficient2*U[1])/(Coefficient1**2+Coefficient2**2)+U[0]],[U[1],Coefficient2*(Constraint1 - Coefficient1*U[0]-Coefficient2*U[1])/(Coefficient1**2+Coefficient2**2)+U[1]],'r')
+    plt.gca().set_aspect('equal')
+    plt.scatter([Coefficient1*(Constraint1 - Coefficient1*U[0]-Coefficient2*U[1])/(Coefficient1**2+Coefficient2**2)+U[0]],[Coefficient2*(Constraint1 - Coefficient1*U[0]-Coefficient2*U[1])/(Coefficient1**2+Coefficient2**2)+U[1]],c='r',marker='o')
+    plt.scatter([X1[0]],[X1[1]],c='k',marker='o')
+    plt.plot([U[0],X1[0]],[U[1],X1[1]],'k')
+    plt.scatter([X2[0]],[X2[1]],c='g',marker='o')
+    plt.plot([U[0],X2[0]],[U[1],X2[1]],'g')
+    plt.show()
+    ```
+
+    ```py3
+    cvxopt.solvers.options['show_progress'] = False
+    Bounds = [[0,1],[0,1]]
+    Coefficient1,Coefficient2,Constraint1 = 1,1,1
+    np.random.seed()
+    U = np.random.rand(2)
+    I2 = cvxopt.matrix([1,0,0,1],(2,2),tc='d')
+
+    costWeights1 = [0,1]
+    Q1 = sum(costWeights1)*I2
+    p1 = costWeights1[1]*cvxopt.matrix([-U[0],-U[1]],tc='d')
+    G1 = cvxopt.matrix([-I2,I2])
+    h1 = cvxopt.matrix([-Bounds[0][0],-Bounds[1][0],Bounds[0][1],Bounds[1][1]],tc='d')
+    A1 = cvxopt.matrix([Coefficient1,Coefficient2], (1,2),tc='d')
+    b1 = cvxopt.matrix(Constraint1,tc='d')
+    sol1 = cvxopt.solvers.qp(Q1,p1,G1,h1,A1,b1)
+    X1 = [sol1['x'][0],sol1['x'][1]]
+    print("Nearest Next Input:\n")
+    print(X1)
+
+    print("\n")
+
+    costWeights2 = [1,0]
+    Q2 = sum(costWeights2)*I2
+    p2 = costWeights2[1]*cvxopt.matrix([-U[0],-U[1]],tc='d')
+    G2 = cvxopt.matrix([-I2,I2])
+    h2 = cvxopt.matrix([-Bounds[0][0],-Bounds[1][0],Bounds[0][1],Bounds[1][1]],tc='d')
+    A2 = cvxopt.matrix([Coefficient1,Coefficient2], (1,2),tc='d')
+    b2 = cvxopt.matrix(Constraint1,tc='d')
+    sol2 = cvxopt.solvers.qp(Q2,p2,G2,h2,A2,b2)
+    X2 = [sol2['x'][0],sol2['x'][1]]
+    print("Minimum Total Input:\n")
+    print(X2)
+
+    print("\n")
+
+    costWeights3 = [1,1]
+    Q3 = sum(costWeights3)*I2
+    p3 = costWeights3[1]*cvxopt.matrix([-U[0],-U[1]],tc='d')
+    G3 = cvxopt.matrix([-I2,I2])
+    h3 = cvxopt.matrix([-Bounds[0][0],-Bounds[1][0],Bounds[0][1],Bounds[1][1]],tc='d')
+    A3 = cvxopt.matrix([Coefficient1,Coefficient2], (1,2),tc='d')
+    b3 = cvxopt.matrix(Constraint1,tc='d')
+    sol3 = cvxopt.solvers.qp(Q3,p3,G3,h3,A3,b3)
+    X3 = [sol3['x'][0],sol3['x'][1]]
+    print("Mixed Cost:\n")
+    print(X3)
+
+    x = np.linspace(0,1,1001)
+    y = np.linspace(0,1,1001)
+    cy = -Coefficient1*x/Coefficient2 + Constraint1/Coefficient2
+    cx = x
+
+    plt.plot([0,1,1,0,0],[0,0,1,1,0],'0.70',linestyle='--')
+    plt.scatter([U[0]],[U[1]],c='r',marker='o')
+    plt.plot(cx,cy,'b')
+    plt.plot([U[0],Coefficient1*(Constraint1 - Coefficient1*U[0]-Coefficient2*U[1])/(Coefficient1**2+Coefficient2**2)+U[0]],[U[1],Coefficient2*(Constraint1 - Coefficient1*U[0]-Coefficient2*U[1])/(Coefficient1**2+Coefficient2**2)+U[1]],'r')
+    plt.gca().set_aspect('equal')
+    plt.scatter([Coefficient1*(Constraint1 - Coefficient1*U[0]-Coefficient2*U[1])/(Coefficient1**2+Coefficient2**2)+U[0]],[Coefficient2*(Constraint1 - Coefficient1*U[0]-Coefficient2*U[1])/(Coefficient1**2+Coefficient2**2)+U[1]],c='r',marker='o')
+    plt.scatter([X1[0]],[X1[1]],c='k',marker='o')
+    plt.plot([U[0],X1[0]],[U[1],X1[1]],'k')
+    plt.scatter([X2[0]],[X2[1]],c='g',marker='o')
+    plt.plot([U[0],X2[0]],[U[1],X2[1]],'g')
+    plt.scatter([X3[0]],[X3[1]],c='b',marker='o')
+    plt.plot([U[0],X3[0]],[U[1],X3[1]],'b')
+    plt.show()
+    ```
+
+    Setting the weights equal to each other produces a point that is exactly inbetween the nearest next input and the point (0.5,0.5) (i.e., minimum overall activation) along the constraint line.
+    """
+
+    cvxopt.solvers.options['show_progress'] = False
+    costWeights = [0.001,0.999] # sums to 1
+    I2 = cvxopt.matrix([1.0,0.0,0.0,1.0],(2,2))
+    Q = sum(costWeights)*I2
+    p = costWeights[1]*cvxopt.matrix([-U[0],-U[1]])
+    # G = cvxopt.matrix([-I2,I2,-I2,I2])
+    # h = cvxopt.matrix([-Bounds[0][0],-Bounds[1][0],Bounds[0][1],Bounds[1][1],\
+    #             -U[0]+MaxStep,-U[1]+MaxStep,U[0]+MaxStep,U[1]+MaxStep])
+    G = cvxopt.matrix([-I2,I2])
+    h = cvxopt.matrix([-Bounds[0][0],-Bounds[1][0],Bounds[0][1],Bounds[1][1]],tc='d')
+    A = cvxopt.matrix([Coefficient1,Coefficient2], (1,2),tc='d')
+    b = cvxopt.matrix(Constraint1,tc='d')
+    sol=cvxopt.solvers.qp(Q, p, G, h, A, b)
+    assert sol['status']=='optimal', "CVXOPT solution is not optimal."
+    NextU = np.array([sol['x'][0],sol['x'][1]])
+
+
+    # mu = 0
+    # sigma = 0.000625
+    # NullU_hat = np.array([-Coefficient2,Coefficient1])/np.sqrt(Coefficient1**2+Coefficient2**2)
+    # RandomU = NextU + np.random.normal(mu,sigma)*NullU_hat
+    # RandomU = RandomU*(RandomU>=0)
+    RandomU=NextU
+    return(RandomU)
 
 def return_U_gaussian_activations_nearby(i,t,X,U,**kwargs):
     """
@@ -186,7 +397,7 @@ def run_sim_gauss_act(**kwargs):
             cprint("Attempt #" + str(int(AttemptNumber)) + ":\n", 'green')
             statusbar = dsb(0,N-1,title=run_sim_gauss_act.__name__)
             for i in range(N-1):
-                U[:,i+1] = return_U_gaussian_activations_nearby(i,Time,X[:,i],U[:,i],Noise = NoiseArray[:,i])
+                U[:,i+1] = return_U_gaussian_activations_nearby_v3(i,Time,X[:,i],U[:,i],Noise = NoiseArray[:,i])
                 X[:,i+1] = X[:,i] + dt*np.array([	dX1_dt(X[:,i]),\
                 									dX2_dt(X[:,i]),\
                 									dX3_dt(X[:,i]),\

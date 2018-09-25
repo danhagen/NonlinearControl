@@ -1,5 +1,6 @@
 from pendulum_eqns.state_equations import *
 from pendulum_eqns.physiology.muscle_params_BIC_TRI import *
+from pendulum_eqns.reference_trajectories._01 import *
 
 if g == 0:
 	MaxStep_Tension = 0.20*min(F_MAX1,F_MAX2) # percentage of positive maximum.
@@ -33,8 +34,10 @@ def return_initial_tension(X_o,**kwargs):
 			and (str(type(X_o)) == "<class 'numpy.ndarray'>"), \
 		"X_o must be a (2,), (4,), or (8,) numpy.ndarray."
 
-	InitialAngularAcceleration = kwargs.get("InitialAngularAcceleration",0) # or d2r(0)
-	assert type(InitialAngularAcceleration) in [float,int], "InitialAngularAcceleration must be either a float or an int."
+	InitialAngularAcceleration = kwargs.get("InitialAngularAcceleration",d2r(0)) # or 0
+	assert (type(InitialAngularAcceleration) in [float,int]) \
+			or (str(type(InitialAngularAcceleration))=="<class 'numpy.float64'>"),\
+		 "InitialAngularAcceleration must be either a float or an int."
 
 	Bounds = kwargs.get("Bounds",Tension_Bounds)
 	assert type(Bounds) == list and np.shape(Bounds) == (2,2), "Bounds for Tension Control must be a (2,2) list."
