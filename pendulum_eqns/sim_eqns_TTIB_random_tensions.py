@@ -1,15 +1,206 @@
 import numpy as np
+import cvxopt
 import matplotlib.pyplot as plt
 from termcolor import cprint,colored
 from danpy.sb import dsb,get_terminal_width
 from pendulum_eqns.init_tendon_tension_controlled_model import *
 
-N_seconds = 1
-N = N_seconds*10000 + 1
+N_seconds = 4
+N = N_seconds*100 + 1
 Time = np.linspace(0,N_seconds,N)
 dt = Time[1]-Time[0]
 
-def return_U_random_tensions(i,t,X,U,**kwargs):
+def divide_time_array(Time,N,N_seconds):
+    N_seconds = 4
+    N = N_seconds*100+1
+    numberOfBins = 4
+    correctNumberOfBins = False
+    while correctNumberOfBins == False:
+        lengths = [int((N/numberOfBins)*el) for el in np.random.normal(1,0.1,size=(4,))]
+        if sum(lengths)==N:
+            correctNumberOfBins=True
+    indices = list(np.cumsum(lengths))
+    indices.append(0)
+    indices = list(sorted(indices))
+
+    splitTimeArrays = []
+    for i in range(len(indices)-1):
+        splitTimeArrays.append(Time[indices[i]:indices[i+1]])
+
+    return(splitTimeArrays)
+
+def create_cubic_spline(TimeArray,initial_slope,final_slope):
+
+def generate_default_path(period,endpointConditions):
+	def spline_coefficients(x1,x2,x3,y1,y2,y3,initial_slope,final_slope):
+		"""
+		Uses the values of (x1,y1), (x2,y2), and (x3,y3) to find the coefficients for the piecewise polynomial
+		equation y = a + b*(x-x_o) + c*(x-x_o)**2 + d*(x-x_o)**3) for a clamped cubic spline with one break only.
+		Returns coefficient arrays A, B, C,and D.
+		"""
+		def c_matrix(x1,x2,x3):
+			"""
+			Takes in the values of x1, x2, and x3 to create the C matrix needed to find the coefficients of a clamped
+			cubic spline with only one break (i.e. Cx = y, where x is an array of c coefficients for the
+			piecewise polynomial equation y = a + b*(x-x_o) + c*(x-x_o)**2 + d*(x-x_o)**3). Returns a matrix.
+			"""
+			import numpy as np
+			C = np.array([	[	2*(x2-x1), 		(x2-x1), 			0			],   \
+							[	(x2-x1), 		2*(x3-x1), 		(x3-x2)		],   \
+							[	0,				(x3-x2),		2*(x3-x2)	] 	], \
+							float)
+			return(C)
+		def y_vector(x1,x2,x3,y1,y2,y3,initial_slope,final_slope):
+			"""
+			Takes in the values of (x1,y1), (x2,y2), and (x3,y3) to create the y array necessary for the clamped cubic
+			spline matrix manipulation for one break only (i.e. Cx = y, where x is an array of c coefficients for the
+			piecewise polynomial equation y = a + b*(x-x_o) + c*(x-x_o)**2 + d*(x-x_o)**3). Returns an array.
+			"""
+			y = np.array([	3*(y2-y1)/(x2-x1) - 3*initial_slope ,  	\
+							3*(y3-y2)/(x3-x2) - 3*(y2-y1)/(x2-x1),  \
+							3*final_slope - 3*(y3-y2)/(x3-x2)	],  \
+							float)
+			return(y)
+		def c_coefficients(x1,x2,x3,y1,y2,y3,initial_slope,final_slope):
+			"""
+			Using matrix manipulations the equation Cx = y necessary for the c coefficients for a clamped cubic spline
+			with only one break (i.e. Cx = y, where x is an array of c coefficients for the piecewise polynomial
+			equation y = a + b*(x-x_o) + c*(x-x_o)**2 + d*(x-x_o)**3) can be rearranged such that x = C.T*y. The values
+			(x1,y1), (x2,y2), and (x3,y3) are the three points needed to the spline and initial_slope and final_slope
+			are the endpoint conditions. Returns an array.
+			"""
+			C = c_matrix(x1,x2,x3)
+			y = y_vector(x1,x2,x3,y1,y2,y3,initial_slope,final_slope)
+			CCoefficients = (np.matrix(C)**(-1))*(np.matrix(y).T)
+			return(CCoefficients)
+		def d_coefficients(x1,x2,x3,CCoefficients):
+			"""
+			Uses the c coefficients and the values of x1, x2, and x3 to find the d coefficients for the	piecewise
+			polynomial equation y = a + b*(x-x_o) + c*(x-x_o)**2 + d*(x-x_o)**3). CCoefficients must be an array with
+			three elements. Returns an array.
+			"""
+			DCoefficients = np.array([	(CCoefficients[1]-CCoefficients[0])/(3*(x2-x1)),  \
+										(CCoefficients[2]-CCoefficients[1])/(3*(x3-x2))	],  \
+										float)
+			return(DCoefficients)
+		def b_coefficients(x1,x2,x3,y1,y2,y3,CCoefficients,DCoefficients):
+			"""
+			Uses the c and d coefficients and the values of (x1,y1), (x2,y2), and (x3,y3) to find the b coefficients for
+			the	piecewise polynomial equation y = a + b*(x-x_o) + c*(x-x_o)**2 + d*(x-x_o)**3). CCoefficients must be an
+			array with two or more elements and DCoefficients must be an array with two elements. Returns an array.
+			"""
+			BCoefficients = np.array([	((y2-y1)/(x2-x1)-CCoefficients[0]*(x2-x1) - DCoefficients[0]*((x2-x1)**2)),  \
+										((y3-y2)/(x3-x2)-CCoefficients[1]*(x3-x2) - DCoefficients[1]*((x3-x2)**2)) 	]).astype(float)
+			return(BCoefficients)
+		def test_b_coefficients(x1,x2,x3,y1,y2,y3,CCoefficients,DCoefficients,expected_slope):
+			"""
+			Tests to make sure that the generated b coefficients match the expected slope. Uses the c and d coefficients
+			and the values of (x1,y1), (x2,y2), and (x3,y3) to find the b coefficients for the	piecewise polynomial
+			equation y = a + b*(x-x_o) + c*(x-x_o)**2 + d*(x-x_o)**3). CCoefficients must be an array with two or more
+			elements and DCoefficients must be an array with two elements. Returns TRUE if expected_slope equals b.
+			"""
+			B = b_coefficients(x1,x2,x3,y1,y2,y3,CCoefficients,DCoefficients)
+			result = abs(B[0]-expected_slope)< 0.001
+			return(result)
+			assert B[0]==expected_slope, "First b coefficient (%f) does not equal initial slope (%f)." (B[0],expected_slope)
+		def a_coefficients(y1,y2):
+			"""
+			Uses the y values of (x1,y1) and (x2,y2) to find the a coefficients for the	piecewise polynomial equation
+			y = a + b*(x-x_o) + c*(x-x_o)**2 + d*(x-x_o)**3). Returns an array.
+			"""
+			ACoefficients = np.array([	y1,    \
+										y2  ]).astype(float)
+			return(ACoefficients)
+		def test_endpoint_slope(b,c,d,x_n_minus_1,x_n,expected_slope):
+			"""
+			Takes in the cubic spline coefficients for the derivative of y = a + b*(x-x_n_minus_1) + c*(x-x_n_minus_1)**2 + d*(x-x_n_minus_1)**3
+			(y' = b + 2*c*(x-x_n_minus_1) + 3*d*(x-x_n_minus_1)**2)	for the last piecewise polynomial and tests to see if the expected slope at
+			the endpoint is equal to the actual	endpoint slope. The variable x_n_minus_1 is the initial value of the final piecewise polynomial
+			and x_n is the final data point. Returns TRUE if they are equal.
+
+			"""
+			actual_slope = b + 2*c*(x_n-x_n_minus_1) + 3*d*(x_n-x_n_minus_1)**2
+			result = abs(actual_slope-expected_slope)<0.001
+			return(result)
+		def test_for_discontinuity(a_n,b_n,c_n,d_n,x_n,x_n_plus_1,y_n_plus_1):
+			"""
+			Takes in the coefficients for a cubic spline polynomial y = a_n + b_n*(x-x_n) + c_n*(x-x_n)**2 + d_n*(x-x_n)**3
+			and tests to see if the final y value for this piecewise polynomial is equal to the initial y value of the next
+			piecewise polynomial (i.e. when x = x_n_plus_1). The variable x_n is the initial x value of the preceding
+			polynomial, and x_n_plus_1 is the transition value from one polynomial to the next. y_n_plus_1 is the initial y
+			value for the next piecewise polynomial.
+			"""
+			y_n_final = a_n + b_n*(x_n_plus_1-x_n) + c_n*(x_n_plus_1-x_n)**2 + d_n*(x_n_plus_1-x_n)**3
+			result = abs(y_n_final-y_n_plus_1)<0.001
+			return(result)
+
+		C = c_coefficients(x1,x2,x3,y1,y2,y3,initial_slope,final_slope)
+		D = d_coefficients(x1,x2,x3,C)
+		B = b_coefficients(x1,x2,x3,y1,y2,y3,C,D)
+		A = a_coefficients(y1,y2)
+
+		assert test_b_coefficients(x1,x2,x3,y1,y2,y3,C,D,initial_slope), "Initial slope does not match the expected value"
+		assert test_endpoint_slope(B[1,0,0],C[1,0],D[1,0,0],x2,x3,final_slope),"Problem with Endpoint Slope"
+		assert test_for_discontinuity(A[0],B[0,0,0],C[0,0],D[0,0,0],x1,x2,A[1]), "Jump Discontinuity at t = %f!" %x2
+
+
+		return(A,B,C[:2],D)
+	ValidPath = False
+	while ValidPath==False:
+		DefaultXi = 0 # m DISPLACEMENT TO BE TRANSLATED BACK LATER
+		DefaultXf = 1 # m
+		DefaultYi = 0 # m
+		DefaultYf = 0 # m
+		EndpointErrorSigma = 0.001*F_MAX1
+		EndpointErrorTheta = 30*(np.pi/180) # Allowable error in initial/final slope, tan(ϑ)
+		MaximumDeviationInY = 0.005*F_MAX1 # N
+
+		if TrialData["Randomize Boundary Positions"][0] == True:
+			x_initial = DefaultXi
+			y_initial = DefaultYi + np.random.normal(0,EndpointErrorSigma) # degree
+		else:
+			x_initial = DefaultXi
+			y_initial = DefaultYi # cm
+
+		if TrialData["Randomize Boundary Positions"][1] == True:
+			x_final = DefaultXf + np.random.normal(0,EndpointErrorSigma) # cm
+			y_final = DefaultYf + np.random.normal(0,EndpointErrorSigma) # cm
+		else:
+			x_final = DefaultXf # cm
+			y_final = DefaultYf # cm
+
+		initialerror = np.random.uniform(-np.tan(EndpointErrorTheta),np.tan(EndpointErrorTheta))
+		# finalerror = -np.sign(initialerror)*\
+		# 		abs(np.random.uniform(-np.tan(EndpointErrorTheta),np.tan(EndpointErrorTheta)))
+		#
+		# if initialerror>0:
+		# 	ymax = max([y_initial,y_final])+MaximumDeviationInY
+		# 	ymin = 0
+		# else:
+		# 	ymax = 0
+		# 	ymin = min([y_initial,y_final])-MaximumDeviationInY
+		finalerror = np.random.uniform(-np.tan(EndpointErrorTheta),np.tan(EndpointErrorTheta))
+		ymax = max([y_initial,y_final])+MaximumDeviationInY
+		ymin = min([y_initial,y_final])-MaximumDeviationInY
+
+		xmax = x_final
+		xmin = x_initial
+		x_rand = np.random.normal((x_initial+x_final)/2,abs(x_initial+x_final)/4)
+		y_rand = np.random.normal((ymax+ymin)/2,abs(ymax+ymin)/4)
+
+		A,B,C,D = spline_coefficients(x_initial,x_rand,x_final,y_initial,y_rand,y_final,initialerror,finalerror)
+		path = Spline(A,B,C,D,x_initial,x_rand,x_final)
+		if path.is_within_bounds(x_initial,x_final, ymin, ymax):
+			ValidPath = True
+		else:
+			ValidPath = False
+	return(path)
+
+def return_particular_tension(t,amp,freq):
+    T = np.array(list(map(lambda t: amp*np.sin(freq*t),t)))
+    return(T)
+
+def return_U_random_tensions(i,t,X,U,particularSolution1,**kwargs):
     """
     Takes in time scalar (float) (t), state numpy.ndarray (X) of shape (2,), and previous input numpy.ndarray (U) of shape (2,) and returns the input for this time step.
 
@@ -49,49 +240,188 @@ def return_U_random_tensions(i,t,X,U,**kwargs):
     MaxStep = kwargs.get("MaxStep",MaxStep_Tension)
     assert type(MaxStep) in [int,float], "MaxStep for Tension Controller should be an int or float."
 
+    """
+    Note on QP from CVXOPT:
+    Takes the form:
+    min. f(x) = (1/2)*(x^T)*Q*x + p*x
+    s.t. G*x<=h and A*x=b
+    When calculating Q, make sure that you DO NOT INCLUDE THE 1/2! The algorithm automatically assumes this value. Therefore, always rearrange f(x) into the most reduced form shown above and then extract Q without the 1/2.
+    To show functionality, run this script:
+    ```py3
+    import numpy as np
+    import matplotlib.pyplot as plt
+    import cvxopt
+    cvxopt.solvers.options['show_progress'] = False
+    Bounds = [[0,1],[0,1]]
+    Coefficient1,Coefficient2,Constraint1 = 1,1,1
+    np.random.seed()
+    U = np.random.rand(2)
+    I2 = cvxopt.matrix([1,0,0,1],(2,2),tc='d')
+    Q1 = I2
+    p1 = cvxopt.matrix([-U[0],-U[1]],tc='d')
+    G1 = cvxopt.matrix([-I2,I2])
+    h1 = cvxopt.matrix([-Bounds[0][0],-Bounds[1][0],Bounds[0][1],Bounds[1][1]],tc='d')
+    A1 = cvxopt.matrix([Coefficient1,Coefficient2], (1,2),tc='d')
+    b1 = cvxopt.matrix(Constraint1,tc='d')
+    sol1 = cvxopt.solvers.qp(Q1,p1,G1,h1,A1,b1)
+    X1 = [sol1['x'][0],sol1['x'][1]]
+    print("Next x from min. (0.5)((x-u)^T)I(x-u):\n")
+    print(X1)
+    print("\n")
+    Q2 = I2
+    p2 = cvxopt.matrix([0,0],tc='d')
+    G2 = cvxopt.matrix([-I2,I2])
+    h2 = cvxopt.matrix([U[0]-Bounds[0][0],U[1]-Bounds[1][0],Bounds[0][1]-U[0],Bounds[1][1]-U[1]],tc='d')
+    A2 = cvxopt.matrix([Coefficient1,Coefficient2], (1,2),tc='d')
+    b2 = cvxopt.matrix(Constraint1-Coefficient1*U[0]-Coefficient2*U[1],tc='d')
+    sol2 = cvxopt.solvers.qp(Q2,p2,G2,h2,A2,b2)
+    X2 = [sol2['x'][0]+U[0],sol2['x'][1]+U[1]]
+    print("Next x from min. (0.5)(\\xi^T)I(\\xi) where \\xi = x-u:\n")
+    print(X2)
+    x = np.linspace(0,1,1001)
+    y = np.linspace(0,1,1001)
+    cy = -Coefficient1*x/Coefficient2 + Constraint1/Coefficient2
+    cx = x
+    plt.plot([0,1,1,0,0],[0,0,1,1,0],'0.70',linestyle='--')
+    plt.scatter([U[0]],[U[1]],c='r',marker='o')
+    plt.plot(cx,cy,'b')
+    plt.plot([U[0],Coefficient1*(Constraint1 - Coefficient1*U[0]-Coefficient2*U[1])/(Coefficient1**2+Coefficient2**2)+U[0]],[U[1],Coefficient2*(Constraint1 - Coefficient1*U[0]-Coefficient2*U[1])/(Coefficient1**2+Coefficient2**2)+U[1]],'r')
+    plt.gca().set_aspect('equal')
+    plt.scatter([Coefficient1*(Constraint1 - Coefficient1*U[0]-Coefficient2*U[1])/(Coefficient1**2+Coefficient2**2)+U[0]],[Coefficient2*(Constraint1 - Coefficient1*U[0]-Coefficient2*U[1])/(Coefficient1**2+Coefficient2**2)+U[1]],c='r',marker='o')
+    plt.scatter([X1[0]],[X1[1]],c='k',marker='o')
+    plt.plot([U[0],X1[0]],[U[1],X1[1]],'k')
+    plt.scatter([X2[0]],[X2[1]],c='g',marker='o')
+    plt.plot([U[0],X2[0]],[U[1],X2[1]],'g')
+    plt.show()
+    ```
+    ```py3
+    cvxopt.solvers.options['show_progress'] = False
+    Bounds = [[0,1],[0,1]]
+    Coefficient1,Coefficient2,Constraint1 = 1,1,1
+    np.random.seed()
+    U = np.random.rand(2)
+    I2 = cvxopt.matrix([1,0,0,1],(2,2),tc='d')
+    costWeights1 = [0,1]
+    Q1 = sum(costWeights1)*I2
+    p1 = costWeights1[1]*cvxopt.matrix([-U[0],-U[1]],tc='d')
+    G1 = cvxopt.matrix([-I2,I2])
+    h1 = cvxopt.matrix([-Bounds[0][0],-Bounds[1][0],Bounds[0][1],Bounds[1][1]],tc='d')
+    A1 = cvxopt.matrix([Coefficient1,Coefficient2], (1,2),tc='d')
+    b1 = cvxopt.matrix(Constraint1,tc='d')
+    sol1 = cvxopt.solvers.qp(Q1,p1,G1,h1,A1,b1)
+    X1 = [sol1['x'][0],sol1['x'][1]]
+    print("Nearest Next Input:\n")
+    print(X1)
+    print("\n")
+    costWeights2 = [1,0]
+    Q2 = sum(costWeights2)*I2
+    p2 = costWeights2[1]*cvxopt.matrix([-U[0],-U[1]],tc='d')
+    G2 = cvxopt.matrix([-I2,I2])
+    h2 = cvxopt.matrix([-Bounds[0][0],-Bounds[1][0],Bounds[0][1],Bounds[1][1]],tc='d')
+    A2 = cvxopt.matrix([Coefficient1,Coefficient2], (1,2),tc='d')
+    b2 = cvxopt.matrix(Constraint1,tc='d')
+    sol2 = cvxopt.solvers.qp(Q2,p2,G2,h2,A2,b2)
+    X2 = [sol2['x'][0],sol2['x'][1]]
+    print("Minimum Total Input:\n")
+    print(X2)
+    print("\n")
+    costWeights3 = [1,1]
+    Q3 = sum(costWeights3)*I2
+    p3 = costWeights3[1]*cvxopt.matrix([-U[0],-U[1]],tc='d')
+    G3 = cvxopt.matrix([-I2,I2])
+    h3 = cvxopt.matrix([-Bounds[0][0],-Bounds[1][0],Bounds[0][1],Bounds[1][1]],tc='d')
+    A3 = cvxopt.matrix([Coefficient1,Coefficient2], (1,2),tc='d')
+    b3 = cvxopt.matrix(Constraint1,tc='d')
+    sol3 = cvxopt.solvers.qp(Q3,p3,G3,h3,A3,b3)
+    X3 = [sol3['x'][0],sol3['x'][1]]
+    print("Mixed Cost:\n")
+    print(X3)
+    x = np.linspace(0,1,1001)
+    y = np.linspace(0,1,1001)
+    cy = -Coefficient1*x/Coefficient2 + Constraint1/Coefficient2
+    cx = x
+    plt.plot([0,1,1,0,0],[0,0,1,1,0],'0.70',linestyle='--')
+    plt.scatter([U[0]],[U[1]],c='r',marker='o')
+    plt.plot(cx,cy,'b')
+    plt.plot([U[0],Coefficient1*(Constraint1 - Coefficient1*U[0]-Coefficient2*U[1])/(Coefficient1**2+Coefficient2**2)+U[0]],[U[1],Coefficient2*(Constraint1 - Coefficient1*U[0]-Coefficient2*U[1])/(Coefficient1**2+Coefficient2**2)+U[1]],'r')
+    plt.gca().set_aspect('equal')
+    plt.scatter([Coefficient1*(Constraint1 - Coefficient1*U[0]-Coefficient2*U[1])/(Coefficient1**2+Coefficient2**2)+U[0]],[Coefficient2*(Constraint1 - Coefficient1*U[0]-Coefficient2*U[1])/(Coefficient1**2+Coefficient2**2)+U[1]],c='r',marker='o')
+    plt.scatter([X1[0]],[X1[1]],c='k',marker='o')
+    plt.plot([U[0],X1[0]],[U[1],X1[1]],'k')
+    plt.scatter([X2[0]],[X2[1]],c='g',marker='o')
+    plt.plot([U[0],X2[0]],[U[1],X2[1]],'g')
+    plt.scatter([X3[0]],[X3[1]],c='b',marker='o')
+    plt.plot([U[0],X3[0]],[U[1],X3[1]],'b')
+    plt.show()
+    ```
+    Setting the weights equal to each other produces a point that is exactly inbetween the nearest next input and the point (0.5,0.5) (i.e., minimum overall activation) along the constraint line.
+    """
     Coefficient1,Coefficient2,Constraint1 = return_constraint_variables(t[i],X)
-
-    if Constraint1 != 0:
-    	assert Coefficient1!=0 and Coefficient2!=0, "Error with Coefficients. Shouldn't be zero with nonzero constraint."
-    else:
-    	assert Coefficient1!=0 and Coefficient2!=0, "Error with Constraint. 0 = 0 implies all inputs valid."
-
     AllowableBounds_x = np.array([U[0]-MaxStep,U[0]+MaxStep])
     AllowableBounds_y = np.array([U[1]-MaxStep,U[1]+MaxStep])
 
-    if Coefficient1 == 0:
-        LowerBound_x = max(Bounds[0][0],AllowbaleBounds_x[0])
-        UpperBound_x = min(Bounds[0][1],AllowbaleBounds_x[1])
-        FeasibleInput1 = (UpperBound_x-LowerBound_x)*np.random.rand() + LowerBound_x
-        FeasibleInput2 = Constraint1/Coefficient2
-    elif Coefficient2 == 0:
-        LowerBound_y = max(Bounds[1][0],AllowableBounds_y[0])
-        UpperBound_y = min(Bounds[1][1],AllowableBounds_y[1])
-        FeasibleInput1 = Constraint1/Coefficient1
-        FeasibleInput2 = (UpperBound_y-LowerBound_y)*np.random.rand() + LowerBound_y
-    else:
-        SortedAllowableBounds = np.sort([\
-        							(Constraint1-Coefficient2*AllowableBounds_y[0])/Coefficient1,\
-        							(Constraint1-Coefficient2*AllowableBounds_y[1])/Coefficient1\
-        							])
-        SortedBounds = np.sort([(Constraint1-Coefficient2*Bounds[1][0])/Coefficient1,\
-        							(Constraint1-Coefficient2*Bounds[1][1])/Coefficient1])
-        LowerBound_x = max(	Bounds[0][0],\
-         					SortedBounds[0],\
-        					AllowableBounds_x[0],\
-        					SortedAllowableBounds[0]\
-        				)
-        UpperBound_x = min(	Bounds[0][1],\
-         					SortedBounds[1],\
-        					AllowableBounds_x[1],\
-        					SortedAllowableBounds[1]\
-        				)
-        # if UpperBound_x < LowerBound_x: import ipdb; ipdb.set_trace()
-        assert UpperBound_x >= LowerBound_x, "Error generating bounds. Not feasible!"
-        FeasibleInput1 = (UpperBound_x-LowerBound_x)*np.random.rand() + LowerBound_x
-        FeasibleInput2 = Constraint1/Coefficient2 - (Coefficient1/Coefficient2)*FeasibleInput1
-
-    return(np.array([FeasibleInput1,FeasibleInput2],ndmin=1))
+    cvxopt.solvers.options['show_progress'] = False
+    costWeights = [0,1] # sums to 1
+    I2 = cvxopt.matrix([1.0,0.0,0.0,1.0],(2,2))
+    Q = sum(costWeights)*I2
+    p = costWeights[1]*cvxopt.matrix([-U[0],-U[1]],tc='d')
+    # G = cvxopt.matrix([-I2,I2,-I2,I2])
+    # h = cvxopt.matrix([-Bounds[0][0],-Bounds[1][0],Bounds[0][1],Bounds[1][1],\
+    #             -U[0]+MaxStep,-U[1]+MaxStep,U[0]+MaxStep,U[1]+MaxStep])
+    G = cvxopt.matrix([-I2,I2,-I2,I2])
+    h = cvxopt.matrix([-Bounds[0][0],-Bounds[1][0],Bounds[0][1],Bounds[1][1],
+                        -AllowableBounds_x[0],-AllowableBounds_y[0],
+                        AllowableBounds_x[1],AllowableBounds_y[1]],tc='d')
+    A = cvxopt.matrix([Coefficient1,Coefficient2], (1,2),tc='d')
+    b = cvxopt.matrix(Constraint1,tc='d')
+    sol=cvxopt.solvers.qp(Q, p, G, h, A, b)
+    assert sol['status']=='optimal', "CVXOPT solution is not optimal."
+    homogeneousSolution = np.array([sol['x'][0],sol['x'][1]])
+    particularSolution2 = -R1(X)*particularSolution1/R2(X)
+    particularSolution = np.array([particularSolution1,particularSolution2])
+    nextU = homogeneousSolution + particularSolution
+    #
+    # if Constraint1 != 0:
+    # 	assert Coefficient1!=0 and Coefficient2!=0, "Error with Coefficients. Shouldn't be zero with nonzero constraint."
+    # else:
+    # 	assert Coefficient1!=0 and Coefficient2!=0, "Error with Constraint. 0 = 0 implies all inputs valid."
+    #
+    #
+    #
+    # if Coefficient1 == 0:
+    #     LowerBound_x = max(Bounds[0][0],AllowbaleBounds_x[0])
+    #     UpperBound_x = min(Bounds[0][1],AllowbaleBounds_x[1])
+    #     FeasibleInput1 = (UpperBound_x-LowerBound_x)*np.random.rand() + LowerBound_x
+    #     FeasibleInput2 = Constraint1/Coefficient2
+    # elif Coefficient2 == 0:
+    #     LowerBound_y = max(Bounds[1][0],AllowableBounds_y[0])
+    #     UpperBound_y = min(Bounds[1][1],AllowableBounds_y[1])
+    #     FeasibleInput1 = Constraint1/Coefficient1
+    #     FeasibleInput2 = (UpperBound_y-LowerBound_y)*np.random.rand() + LowerBound_y
+    # else:
+    #     SortedAllowableBounds = np.sort([\
+    #     							(Constraint1-Coefficient2*AllowableBounds_y[0])/Coefficient1,\
+    #     							(Constraint1-Coefficient2*AllowableBounds_y[1])/Coefficient1\
+    #     							])
+    #     SortedBounds = np.sort([(Constraint1-Coefficient2*Bounds[1][0])/Coefficient1,\
+    #     							(Constraint1-Coefficient2*Bounds[1][1])/Coefficient1])
+    #     LowerBound_x = max(	Bounds[0][0],\
+    #      					SortedBounds[0],\
+    #     					AllowableBounds_x[0],\
+    #     					SortedAllowableBounds[0]\
+    #     				)
+    #     UpperBound_x = min(	Bounds[0][1],\
+    #      					SortedBounds[1],\
+    #     					AllowableBounds_x[1],\
+    #     					SortedAllowableBounds[1]\
+    #     				)
+    #     # if UpperBound_x < LowerBound_x: import ipdb; ipdb.set_trace()
+    #     assert UpperBound_x >= LowerBound_x, "Error generating bounds. Not feasible!"
+    #     FeasibleInput1 = (UpperBound_x-LowerBound_x)*np.random.rand() + LowerBound_x
+    #     FeasibleInput2 = Constraint1/Coefficient2 - (Coefficient1/Coefficient2)*FeasibleInput1
+    #
+    # return(np.array([FeasibleInput1,FeasibleInput2],ndmin=1))
+    return(nextU)
 
 def run_sim_rand_TT(N,**kwargs):
     """
@@ -115,6 +445,7 @@ def run_sim_rand_TT(N,**kwargs):
     AttemptNumber = 1
 
     while AnotherIteration == True:
+        particularSolution1 = return_particular_tension(Time,0.01*F_MAX1,16*np.pi)
         X = np.zeros((2,N))
         X_o,InitialTensions = find_initial_values_TT(**kwargs)
         X[:,0] = X_o
@@ -132,10 +463,12 @@ def run_sim_rand_TT(N,**kwargs):
             cprint("Attempt #" + str(int(AttemptNumber)) + ":\n", 'green')
             statusbar = dsb(0,N-1,title=run_sim_rand_TT.__name__)
             for i in range(N-1):
-            	U[:,i+1] = return_U_random_tensions(i,Time,X[:,i],U[:,i],Noise = NoiseArray[:,i])
-            	X[:,i+1] = X[:,i] + dt*np.array([	dX1_dt(X[:,i]),\
-            										dX2_dt(X[:,i],U=U[:,i+1])])
-            	statusbar.update(i)
+                U[:,i+1] = return_U_random_tensions(i,Time,X[:,i],U[:,i],
+                                                    particularSolution1[i],
+                                                    Noise=NoiseArray[:,i])
+                X[:,i+1] = X[:,i] + dt*np.array([	dX1_dt(X[:,i]),\
+                									dX2_dt(X[:,i],U=U[:,i+1])])
+                statusbar.update(i)
             AnotherIteration = False
             return(X,U)
         except:
