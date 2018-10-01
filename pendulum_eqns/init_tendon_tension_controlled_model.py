@@ -17,7 +17,7 @@ def find_initial_values_TT(**kwargs):
 	np.random.seed(Seed)
 
 	X_o = np.array([Amp+Base,0])
-	T = return_initial_tension(X_o)
+	T = return_initial_tension(X_o,Bounds=[[0,0.05*F_MAX1],[0,0.05*F_MAX2]],InitialAngularAcceleration=d2r(0))
 	return(X_o,T)
 
 def animate_input_vs_time(t,X,U,**kwargs):

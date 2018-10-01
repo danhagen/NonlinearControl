@@ -34,7 +34,9 @@ def return_initial_tension(X_o,**kwargs):
 		"X_o must be a (2,), (4,), or (8,) numpy.ndarray."
 
 	InitialAngularAcceleration = kwargs.get("InitialAngularAcceleration",0) # or d2r(0)
-	assert type(InitialAngularAcceleration) in [float,int], "InitialAngularAcceleration must be either a float or an int."
+	assert (type(InitialAngularAcceleration) in [float,int]) \
+			or (str(type(InitialAngularAcceleration))=="<class 'numpy.float64'>"), \
+		"InitialAngularAcceleration must be either a float, int, or numpy.float64."
 
 	Bounds = kwargs.get("Bounds",Tension_Bounds)
 	assert type(Bounds) == list and np.shape(Bounds) == (2,2), "Bounds for Tension Control must be a (2,2) list."
