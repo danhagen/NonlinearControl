@@ -3,16 +3,54 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from termcolor import cprint,colored
 from danpy.sb import dsb,get_terminal_width
-from pendulum_eqns.init_FF_sinusoid_model import *
+from pendulum_eqns.init_IB_sinusoid_model import *
 ### ONLY WORKS FOR REFERENCE TRAJECTORY 1
 
 
-N_seconds = 10
-N = N_seconds*10000 + 1
+N_seconds = 4
+N = N_seconds*5000 + 1
 Time = np.linspace(0,N_seconds,N)
 dt = Time[1]-Time[0]
 
-def run_sim_FF_sinus_act(**kwargs):
+def return_U_given_sinusoidal_u1(i,t,X,u1,**kwargs):
+    """
+    Takes in current step (i), numpy.ndarray of time (t) of shape (N,), state numpy.ndarray (X) of shape (8,), and previous input scalar u1 and returns the input U (shape (2,)) for this time step.
+
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    **kwargs
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    1) Bounds - must be a (2,2) list with each row in ascending order. Default is given by Activation_Bounds.
+
+    """
+    import random
+    import numpy as np
+    assert (np.shape(t) == (len(t),)) and (str(type(t)) == "<class 'numpy.ndarray'>"),\
+     	"t must be a numpy.ndarray of shape (len(t),)."
+    assert np.shape(X) == (8,) and str(type(X)) == "<class 'numpy.ndarray'>", "X must be a (8,) numpy.ndarray"
+    assert str(type(u1)) in ["<class 'int'>","<class 'float'>","<class 'numpy.float64'>"], \
+        "u1 must be an int or a float."
+
+    Bounds = kwargs.get("Bounds",Activation_Bounds)
+    assert type(Bounds) == list and np.shape(Bounds) == (2,2), "Bounds for Muscle Activation Control must be a (2,2) list."
+    assert Bounds[0][0]<Bounds[0][1],"Each set of bounds must be in ascending order."
+    assert Bounds[1][0]<Bounds[1][1],"Each set of bounds must be in ascending order."
+
+    Coefficient1,Coefficient2,Constraint1 = return_constraint_variables(t[i],X)
+    assert Coefficient1!=0 and Coefficient2!=0, "Error with Coefficients. Shouldn't both be zero"
+    if Constraint1 < 0:
+    	assert not(Coefficient1 > 0 and Coefficient2 > 0), "Infeasible activations. (Constraint1 < 0, Coefficient1 > 0, Coefficient2 > 0)"
+    if Constraint1 > 0:
+    	assert not(Coefficient1 < 0 and Coefficient2 < 0), "Infeasible activations. (Constraint1 > 0, Coefficient1 < 0, Coefficient2 < 0)"
+
+    u2 = (Constraint1 - Coefficient1*u1)/Coefficient2
+    NextU = np.array([u1,u2])
+
+    assert (Bounds[0][0]<=u1<=Bounds[0][1]) and (Bounds[1][0]<=u2<=Bounds[1][1]), "Error! Choice of u1 results in infeasible activation along backstepping constraint."
+
+    return(NextU)
+
+def run_sim_IB_sinus_act(**kwargs):
     """
     Runs one simulation for NEARBY ACTIVATION BY GAUSSIAN DISTRIBUTION control.
 
@@ -38,19 +76,15 @@ def run_sim_FF_sinus_act(**kwargs):
     thresh = kwargs.get("thresh",25)
     assert type(thresh)==int, "thresh should be an int as it is the number of attempts the program should run before stopping."
 
-    Bounds = kwargs.get("Bounds",ActivationBounds)
+    Bounds = kwargs.get("Bounds",Activation_Bounds)
     assert type(Bounds)==list and np.shape(Bounds)==(2,2), "Bounds should be a list of shape (2,2)."
 
-
-    Amps = kwargs.get("Amps",[0.1,0.1])
-    if Amps != "Scaled":
-        assert type(Amps)==list and len(Amps)==2, "Amps should be a list of length 2 with values that are within activation bounds."
+    Amp = kwargs.get("Amp",1)
+    if Amp!="Scaled":
+        assert type(Amp) in [int,float], "Amp should be an int or a float."
 
     Freq = kwargs.get("Freq",1)
     assert type(Freq) in [int,float], "Freq should be an int or a float."
-
-    PhaseOffset = kwargs.get("PhaseOffset",90)
-    assert (type(PhaseOffset) in [int,float]) and (0<=PhaseOffset<360), "PhaseOffset should be an int or a float in [0,360)."
 
     AnotherIteration = True
     AttemptNumber = 1
@@ -69,15 +103,15 @@ def run_sim_FF_sinus_act(**kwargs):
         	0,
         	0]
         U = np.zeros((2,N))
-        if Amps == "Scaled":
-            Amps = 0.25*InitialActivations
-        U[0,:] = InitialActivations[0] + Amps[0]*(np.cos(2*np.pi*Freq*Time)-1)
-        U[1,:] = InitialActivations[1] + Amps[1]*(np.cos(2*np.pi*Freq*Time - PhaseOffset*(np.pi/180)) - np.cos(-PhaseOffset*(np.pi/180)))
+        if Amp == "Scaled":
+            Amp = 0.25*InitialActivations[0]
+        U[0,:] = InitialActivations[0] + Amp*(np.cos(2*np.pi*Freq*Time)-1)
 
         try:
             cprint("Attempt #" + str(int(AttemptNumber)) + ":\n", 'green')
-            statusbar = dsb(0,N-1,title=run_sim_FF_sinus_act.__name__)
+            statusbar = dsb(0,N-1,title=run_sim_IB_sinus_act.__name__)
             for i in range(N-1):
+                U[:,i+1] = return_U_given_sinusoidal_u1(i,Time,X[:,i],U[0,i+1])
                 X[:,i+1] = X[:,i] + dt*np.array([	dX1_dt(X[:,i]),\
                 									dX2_dt(X[:,i]),\
                 									dX3_dt(X[:,i]),\
@@ -100,7 +134,7 @@ def run_sim_FF_sinus_act(**kwargs):
                 AnotherIteration=False
                 return(np.zeros((8,N)),np.zeros((2,N)))
 
-def run_N_sim_FF_sinus_act(**kwargs):
+def run_N_sim_IB_sinus_act(**kwargs):
 
     NumberOfTrials = kwargs.get("NumberOfTrials",10)
 
@@ -119,7 +153,7 @@ def run_N_sim_FF_sinus_act(**kwargs):
             " "*int(TerminalWidth/2 - len(TrialTitle)/2)
             + colored(TrialTitle,'white',attrs=["underline","bold"])
             )
-        TotalX[j],TotalU[j] = run_sim_FF_sinus_act(**kwargs)
+        TotalX[j],TotalU[j] = run_sim_IB_sinus_act(**kwargs)
 
     i=0
     NumberOfSuccessfulTrials = NumberOfTrials
@@ -142,7 +176,7 @@ def run_N_sim_FF_sinus_act(**kwargs):
     )
     return(TotalX,TotalU)
 
-def plot_N_sim_FF_sinus_act(t,TotalX,TotalU,**kwargs):
+def plot_N_sim_IB_sinus_act(t,TotalX,TotalU,**kwargs):
     Return = kwargs.get("Return",False)
     assert type(Return) == bool, "Return should either be True or False"
 
@@ -152,7 +186,7 @@ def plot_N_sim_FF_sinus_act(t,TotalX,TotalU,**kwargs):
     fig1 = plt.figure(figsize = (9,7))
     fig1_title = "Underdetermined Forced-Pendulum Example"
     plt.title(fig1_title,fontsize=16,color='gray')
-    statusbar = dsb(0,np.shape(TotalX)[0],title=(plot_N_sim_FF_sinus_act.__name__ + " (" + fig1_title +")"))
+    statusbar = dsb(0,np.shape(TotalX)[0],title=(plot_N_sim_IB_sinus_act.__name__ + " (" + fig1_title +")"))
     for j in range(np.shape(TotalX)[0]):
         plt.plot(t,(TotalX[j,0,:])*180/np.pi,'0.70',lw=2)
         statusbar.update(j)
@@ -165,7 +199,7 @@ def plot_N_sim_FF_sinus_act(t,TotalX,TotalU,**kwargs):
     fig2 = plt.figure(figsize = (9,7))
     fig2_title = "Error vs. Time"
     plt.title(fig2_title)
-    statusbar.reset(title=(plot_N_sim_FF_sinus_act.__name__ + " (" + fig2_title +")"))
+    statusbar.reset(title=(plot_N_sim_IB_sinus_act.__name__ + " (" + fig2_title +")"))
     for j in range(np.shape(TotalX)[0]):
         plt.plot(t, (r(t)-TotalX[j,0,:])*180/np.pi,color='0.70')
         statusbar.update(j)
@@ -174,7 +208,7 @@ def plot_N_sim_FF_sinus_act(t,TotalX,TotalU,**kwargs):
 
     statusbar.reset(
         title=(
-        	plot_N_sim_FF_sinus_act.__name__
+        	plot_N_sim_IB_sinus_act.__name__
         	+ " (Plotting States, Inputs, and Muscle Length Comparisons)"
         	)
         )
