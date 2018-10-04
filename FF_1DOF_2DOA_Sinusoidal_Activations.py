@@ -3,7 +3,11 @@ from useful_functions import *
 import pickle
 
 X_o = np.array([r(0),dr(0)])
-InitialTensions = return_initial_tension(X_o,ReturnMultipleInitialTensions=True) # len::8
+InitialTensions = return_initial_tension(
+                        X_o,
+                        ReturnMultipleInitialTensions=True,
+                        InitialAngularAcceleration=d2r(0)
+                        ) # len::8
 InitialTensions = InitialTensions[:1]
 # InitialTensions = [return_initial_tension(X_o)]*10
 NumberOfTensionTrials = len(InitialTensions)
@@ -22,7 +26,15 @@ for i in range(NumberOfTensionTrials):
         	+ colored(TensionTrialTitle,'blue',attrs=["underline","bold"])
         	)
 
-        TotalX_temp,TotalU_temp = run_N_sim_FF_sinus_act(NumberOfTrials=1,FixedInitialTension=InitialTensions[i],Amps="Scaled",Freq=1,PhaseOffset=180)
+        TotalX_temp,TotalU_temp = run_N_sim_FF_sinus_act(
+                                        NumberOfTrials=1,
+                                        FixedInitialTension=InitialTensions[i],
+                                        Amps="Scaled",
+                                        Freq=1,
+                                        PhaseOffset=180,
+                                        InitialAngularAcceleration=d2r(0),
+                                        InitialAngularSnap=d4r(0)
+                                        )
         _,Error_temp = plot_N_sim_FF_sinus_act(
                 Time,TotalX_temp,
                 TotalU_temp,Return=True,

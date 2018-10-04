@@ -11,15 +11,26 @@ else:
 
 def return_initial_tension(X_o,**kwargs):
 	"""
-	Takes in initial state numpy.ndarray (X_o) of shape (2,) and returns an initial tension (2,) numpy.ndarray for .
+	~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	Takes in initial state numpy.ndarray (X_o) of shape (2,) and returns an initial tension (2,) numpy.ndarray. InitialAngularAcceleration should be chosen or left to default to ensure proper IC's.
 
 	~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 	**kwargs
+
 	~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	1) Bounds - must be a (2,2) list with each row in ascending order. Default is given by Tension_Bounds.
 
 	2) InitialAngularAcceleration - must be a float or an int. Default is 0 (starting from rest).
+
+	3) ReturnMultipleInitialTensions - must be either True or False. Default is False.
+
+	4) Seed - must be a float or an int. Default is None (seeded by current time).
+
+	~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 
 	"""
 	ReturnMultipleInitialTensions = kwargs.get("ReturnMultipleInitialTensions",False)
@@ -65,16 +76,36 @@ def return_initial_tension(X_o,**kwargs):
 
 def return_initial_tension_acceleration(T_o,X_o,**kwargs):
 	"""
-	Note: This works for reference_trajectories/_01.py
+	~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	Uses the assumption that the initial angular acceleration and jerk are nonzero.
+	Takes in initial tension (T_o) of shape (2,), initial state numpy.ndarray (X_o) of shape (2,),  and returns an initial tension acceleration of shape (2,). InitialAngularAcceleration and InitialAngularSnap should be chosen or left to default to ensure proper IC's. Default conditions will return zero tension acceleration (i.e., starting from rest), unless otherwise dictated by the particular solution.
 
-	Maybe incorporate a kwargs in the future to test for this.
+	~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	**kwargs
+
+	~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	1) Bounds - must be a (2,2) list with each row in ascending order. Default is given by Tension_Bounds.
+
+	2) InitialAngularAcceleration - must be a numpy.float64, float, or an int. Default is 0 (starting from rest).
+
+	3) InitialAngularSnap - must be a numpy.float64, float, or an int. Default is 0 (starting from rest).
+
+	4) ReturnMultipleInitialTensions - must be either True or False. Default is False.
+
+	5) Seed - must be a float or an int. Default is None (seeded by current time).
+
+	6) ParticularSolution - Must be a numpy array of shape (2,). Default is numpy.array([0,0]). Must be in the nullspace of [r1(X_o[0]),r2(X_o[0])].
+
+	~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
 	"""
-	InitialAngularJerk = kwargs.get("InitialAngularJerk",d4r(0))
-	assert str(type(InitialAngularJerk)) in ["<class 'int'>", "<class 'float'>", "<class 'numpy.float64'>"], "InitialAngularJerk must be either a float, int or numpy.float64"
+	InitialAngularSnap = kwargs.get("InitialAngularSnap",0)
+	assert str(type(InitialAngularSnap)) in ["<class 'int'>", "<class 'float'>", "<class 'numpy.float64'>"], "InitialAngularSnap must be either a float, int or numpy.float64"
 
-	InitialAngularAcceleration = kwargs.get("InitialAngularAcceleration",d2r(0))
+	InitialAngularAcceleration = kwargs.get("InitialAngularAcceleration",0)
 	assert str(type(InitialAngularAcceleration)) in ["<class 'int'>", "<class 'float'>", "<class 'numpy.float64'>"], "InitialAngularAcceleration must be either a float, int or numpy.float64"
 
 	ParticularSolution = kwargs.get("ParticularSolution",np.array([0,0]))
@@ -83,7 +114,7 @@ def return_initial_tension_acceleration(T_o,X_o,**kwargs):
 				+ r2(X_o[0])*ParticularSolution[1]) < 1e-6, \
 		"ParticularSolution must be in the nullspace of [R1,R2]."
 
-	HomogeneousSolution = (((1/c2)*InitialAngularJerk
+	HomogeneousSolution = (((1/c2)*InitialAngularSnap
 							- InitialAngularAcceleration
 								* (dr1_dθ(X_o[0])*T_o[0]
 									+ dr2_dθ(X_o[0])*T_o[1]

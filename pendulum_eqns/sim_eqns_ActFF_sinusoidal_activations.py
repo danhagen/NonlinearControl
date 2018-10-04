@@ -4,7 +4,6 @@ from mpl_toolkits.mplot3d import Axes3D
 from termcolor import cprint,colored
 from danpy.sb import dsb,get_terminal_width
 from pendulum_eqns.init_FF_sinusoid_model import *
-### ONLY WORKS FOR REFERENCE TRAJECTORY 1
 
 
 N_seconds = 10
@@ -14,7 +13,7 @@ dt = Time[1]-Time[0]
 
 def run_sim_FF_sinus_act(**kwargs):
     """
-    Runs one simulation for NEARBY ACTIVATION BY GAUSSIAN DISTRIBUTION control.
+    Runs one simulation for FEEDFORWARD SINUSOIDAL INPUT control.
 
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     **kwargs
@@ -33,6 +32,14 @@ def run_sim_FF_sinus_act(**kwargs):
     6) Freq - scalar value given in Hz.
 
     7) PhaseOffset - scalar value in [0,360).
+
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    **kwargs (Passed to find_viable_initial_values())
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    8) InitialAngularAcceleration - must be either a numpy.float64, float, or int. Default is set to 0 to simulate starting from rest. Choice of reference trajectory *should* not matter as it is either 0 or d2r(0) (either by convention or by choice).
+
+    9) InitialAngularSnap - must be either a numpy.float64, float, or int. Default is set to 0 to simulate starting from rest. Choice of reference trajectory *should* not matter as it is either 0 or d4r(0) (either by convention or by choice).
 
     """
     thresh = kwargs.get("thresh",25)
@@ -101,7 +108,42 @@ def run_sim_FF_sinus_act(**kwargs):
                 return(np.zeros((8,N)),np.zeros((2,N)))
 
 def run_N_sim_FF_sinus_act(**kwargs):
+    """
+    Runs one simulation for FEEDFORWARD SINUSOIDAL INPUT control.
 
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    **kwargs
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    0) NumberOfTrials - positive integer value.
+
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    **kwargs (Passed to run_sim_FF_sinus_act())
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    1) Bounds - must be a (2,2) list with each row in ascending order. Default is given by Tension_Bounds.
+
+    2) InitialAngularAcceleration - must be a float or an int. Default is 0 (starting from rest).
+
+    3) thresh - must be an int. Default is 25.
+
+    4) FixedInitialTension - will be passed to find_viable_initial_values and will fix the value of initial tension. Must be a (2,) numpy.ndarray. Run find_initial_tension outside of the loop for a given seed and then feed it through the pipeline.
+
+    5) Amps - list of length 2 that has the amplitudes of sinusoidal activation trajectories.
+
+    6) Freq - scalar value given in Hz.
+
+    7) PhaseOffset - scalar value in [0,360).
+
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    **kwargs (Passed to find_viable_initial_values())
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    8) InitialAngularAcceleration - must be either a numpy.float64, float, or int. Default is set to 0 to simulate starting from rest. Choice of reference trajectory *should* not matter as it is either 0 or d2r(0) (either by convention or by choice).
+
+    9) InitialAngularSnap - must be either a numpy.float64, float, or int. Default is set to 0 to simulate starting from rest. Choice of reference trajectory *should* not matter as it is either 0 or d4r(0) (either by convention or by choice).
+
+    """
     NumberOfTrials = kwargs.get("NumberOfTrials",10)
 
     TotalX = np.zeros((NumberOfTrials,8,N))

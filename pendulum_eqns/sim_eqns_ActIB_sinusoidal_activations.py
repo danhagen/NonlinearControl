@@ -52,7 +52,7 @@ def return_U_given_sinusoidal_u1(i,t,X,u1,**kwargs):
 
 def run_sim_IB_sinus_act(**kwargs):
     """
-    Runs one simulation for NEARBY ACTIVATION BY GAUSSIAN DISTRIBUTION control.
+    Runs one simulation for INTEGRATOR BACKSTEPPING SINUSOIDAL INPUT control.
 
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     **kwargs
@@ -70,11 +70,16 @@ def run_sim_IB_sinus_act(**kwargs):
 
     6) Freq - scalar value given in Hz.
 
-    7) PhaseOffset - scalar value in [0,360).
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    **kwargs (Passed to find_viable_initial_values())
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    8) InitialTensionAcceleration - will be passed to find_viable_initial_values(**kwargs). Must be a numpy array of shape (2,)
+    7) InitialAngularAcceleration - must be either a numpy.float64, float, or int. Default is set to 0 to simulate starting from rest. Choice of reference trajectory *should* not matter as it is either 0 or d2r(0) (either by convention or by choice).
+
+    8) InitialAngularSnap - must be either a numpy.float64, float, or int. Default is set to 0 to simulate starting from rest. Choice of reference trajectory *should* not matter as it is either 0 or d4r(0) (either by convention or by choice).
 
     """
+
     thresh = kwargs.get("thresh",25)
     assert type(thresh)==int, "thresh should be an int as it is the number of attempts the program should run before stopping."
 
@@ -107,6 +112,9 @@ def run_sim_IB_sinus_act(**kwargs):
         U = np.zeros((2,N))
         if Amp == "Scaled":
             Amp = 0.25*InitialActivations[0]
+        if Amp<0:
+            import ipdb; ipdb.set_trace()
+
         U[0,:] = InitialActivations[0] + Amp*(np.cos(2*np.pi*Freq*Time)-1)
         U[1,0] = InitialActivations[1]
 
