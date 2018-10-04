@@ -1,5 +1,6 @@
 from pendulum_eqns.state_equations import *
 from pendulum_eqns.physiology.muscle_params_BIC_TRI import *
+from pendulum_eqns.reference_trajectories._01 import *
 
 if g == 0:
 	MaxStep_Tension = 0.20*min(F_MAX1,F_MAX2) # percentage of positive maximum.
@@ -34,7 +35,7 @@ def return_initial_tension(X_o,**kwargs):
 		"X_o must be a (2,), (4,), or (8,) numpy.ndarray."
 
 	InitialAngularAcceleration = kwargs.get("InitialAngularAcceleration",0) # or d2r(0)
-	assert type(InitialAngularAcceleration) in [float,int], "InitialAngularAcceleration must be either a float or an int."
+	assert str(type(InitialAngularAcceleration)) in ["<class 'float'>","<class 'int'>","<class 'numpy.float64'>"], "InitialAngularAcceleration must be either a float or an int."
 
 	Bounds = kwargs.get("Bounds",Tension_Bounds)
 	assert type(Bounds) == list and np.shape(Bounds) == (2,2), "Bounds for Tension Control must be a (2,2) list."
@@ -61,6 +62,37 @@ def return_initial_tension(X_o,**kwargs):
 		InitialTension = (UpperBoundVector-LowerBoundVector)*np.random.rand() + LowerBoundVector
 
 	return(InitialTension)
+
+def return_initial_tension_acceleration(T_o,X_o,**kwargs):
+	"""
+	Note: This works for reference_trajectories/_01.py
+
+	Uses the assumption that the initial angular acceleration and jerk are nonzero.
+
+	Maybe incorporate a kwargs in the future to test for this.
+	"""
+	InitialAngularJerk = kwargs.get("InitialAngularJerk",d4r(0))
+	assert str(type(InitialAngularJerk)) in ["<class 'int'>", "<class 'float'>", "<class 'numpy.float64'>"], "InitialAngularJerk must be either a float, int or numpy.float64"
+
+	InitialAngularAcceleration = kwargs.get("InitialAngularAcceleration",d2r(0))
+	assert str(type(InitialAngularAcceleration)) in ["<class 'int'>", "<class 'float'>", "<class 'numpy.float64'>"], "InitialAngularAcceleration must be either a float, int or numpy.float64"
+
+	ParticularSolution = kwargs.get("ParticularSolution",np.array([0,0]))
+	assert np.shape(ParticularSolution)==(2,) and str(type(ParticularSolution))=="<class 'numpy.ndarray'>", "ParticularSolution must be a (2,) numpy.ndarray"
+	assert abs(r1(X_o[0])*ParticularSolution[0]
+				+ r2(X_o[0])*ParticularSolution[1]) < 1e-6, \
+		"ParticularSolution must be in the nullspace of [R1,R2]."
+
+	HomogeneousSolution = (((1/c2)*InitialAngularJerk
+							- InitialAngularAcceleration
+								* (dr1_dθ(X_o[0])*T_o[0]
+									+ dr2_dθ(X_o[0])*T_o[1]
+								)
+							)
+							/ (r1(X_o[0])**2 + r2(X_o[0])**2)
+							) * np.array([r1(X_o[0]),r2(X_o[0])])
+
+	return(ParticularSolution+HomogeneousSolution)
 
 def plot_initial_tension_values(X_o,**kwargs):
 	"""

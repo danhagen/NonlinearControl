@@ -72,6 +72,8 @@ def run_sim_IB_sinus_act(**kwargs):
 
     7) PhaseOffset - scalar value in [0,360).
 
+    8) InitialTensionAcceleration - will be passed to find_viable_initial_values(**kwargs). Must be a numpy array of shape (2,)
+
     """
     thresh = kwargs.get("thresh",25)
     assert type(thresh)==int, "thresh should be an int as it is the number of attempts the program should run before stopping."
@@ -106,6 +108,7 @@ def run_sim_IB_sinus_act(**kwargs):
         if Amp == "Scaled":
             Amp = 0.25*InitialActivations[0]
         U[0,:] = InitialActivations[0] + Amp*(np.cos(2*np.pi*Freq*Time)-1)
+        U[1,0] = InitialActivations[1]
 
         try:
             cprint("Attempt #" + str(int(AttemptNumber)) + ":\n", 'green')
@@ -135,8 +138,33 @@ def run_sim_IB_sinus_act(**kwargs):
                 return(np.zeros((8,N)),np.zeros((2,N)))
 
 def run_N_sim_IB_sinus_act(**kwargs):
+    """
+    Runs one simulation for sinusoidal u1 control.
 
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    **kwargs (most are passed to run_sim_IB_sinus_act())
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    1) Bounds - must be a (2,2) list with each row in ascending order. Default is given by Tension_Bounds.
+
+    2) InitialAngularAcceleration - must be a float or an int. Default is 0 (starting from rest).
+
+    3) thresh - must be an int. Default is 25.
+
+    4) FixedInitialTension - will be passed to find_viable_initial_values and will fix the value of initial tension. Must be a (2,) numpy.ndarray. Run find_initial_tension outside of the loop for a given seed and then feed it through the pipeline.
+
+    5) Amps - list of length 2 that has the amplitudes of sinusoidal activation trajectories.
+
+    6) Freq - scalar value given in Hz.
+
+    7) PhaseOffset - scalar value in [0,360).
+
+    8) InitialTensionAcceleration - will be passed to find_viable_initial_values(**kwargs). Must be a numpy array of shape (2,)
+
+    9) NumberOfTrials - should be an int.
+    """
     NumberOfTrials = kwargs.get("NumberOfTrials",10)
+    assert type(NumberOfTrials)==int and NumberOfTrials>0,"NumberOfTrials must be an positive int."
 
     TotalX = np.zeros((NumberOfTrials,8,N))
     TotalU = np.zeros((NumberOfTrials,2,N))

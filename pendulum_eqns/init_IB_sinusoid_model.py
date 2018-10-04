@@ -9,25 +9,131 @@ def return_constraint_variables(t,X):
 	Constraint = A4(t,X,InitGlobals=True)
 	return(Coefficient1,Coefficient2,Constraint)
 
-def return_random_initial_muscle_lengths_and_activations(InitialTension,**kwargs):
+def return_random_initial_muscle_lengths_and_activations(InitialTension,X_o,**kwargs):
 	PlotBool = kwargs.get("PlotBool",False)
 	assert type(PlotBool)==bool,"PlotBool must be a boolean. Default is False."
 
-	# L1 = np.linspace(0.5*lo1, 1.5*lo1, 1001)
-	mu1, sigma1 = lo1, 0.1*lo1
-	L1 = np.array(list(sorted(np.random.normal(mu1, sigma1, 1001))))
-	U1 = (
-		InitialTension[0][0]/(F_MAX1*np.cos(α1))
-	    - c_1*k_1*np.log(np.exp((L1/(lo1*L_CE_max_1) - Lr1)/k_1)+1)
-	    ) / (np.exp(-(abs((L1-lo1)/(lo1*ω))**ρ)))
+	InitialTensionAcceleration = kwargs.get("InitialTensionAcceleration",return_initial_tension_acceleration(InitialTension,X_o))
+	assert np.shape(InitialTensionAcceleration)==(2,) \
+			and str(type(InitialTensionAcceleration))=="<class 'numpy.ndarray'>", \
+		"InitialTensionAcceleration must be a numpy array of shape (2,)"
 
-	# L2 = np.linspace(0.5*lo2, 1.5*lo2, 1001)
-	mu2, sigma2 = lo2, 0.1*lo2
-	L2 = np.array(list(sorted(np.random.normal(mu2, sigma2, 1001))))
-	U2 = (
-		InitialTension[1][0]/(F_MAX2*np.cos(α2))
-	    - c_1*k_1*np.log(np.exp((L2/(lo2*L_CE_max_2) - Lr1)/k_1)+1)
-	    ) / (np.exp(-(abs((L2-lo2)/(lo2*ω))**ρ)))
+	InitialAngularAcceleration = kwargs.get("InitialAngularAcceleration",0) # or d2r(0)
+	assert str(type(InitialAngularAcceleration)) in ["<class 'float'>","<class 'int'>","<class 'numpy.float64'>"], "InitialAngularAcceleration must be either a float or an int."
+
+	a_MTU1_o = np.sign(-r1(X_o[0]))*(
+		InitialAngularAcceleration
+		* np.sqrt(dr1_dθ(X_o[0])**2 + r1(X_o[0])**2)
+		+
+		X_o[1]**2
+		* dr1_dθ(X_o[0])
+		* (d2r1_dθ2(X_o[0]) + r1(X_o[0]))
+		/ np.sqrt(dr1_dθ(X_o[0])**2 + r1(X_o[0])**2)
+		)
+	a_MTU2_o = np.sign(-r2(X_o[0]))*(
+		InitialAngularAcceleration
+		* np.sqrt(dr2_dθ(X_o[0])**2 + r2(X_o[0])**2)
+		+
+		X_o[1]**2
+		* dr2_dθ(X_o[0])
+		* (d2r2_dθ2(X_o[0]) + r2(X_o[0]))
+		/ np.sqrt(dr2_dθ(X_o[0])**2 + r2(X_o[0])**2)
+		)
+
+	L1_UB = lo1*L_CE_max_1*(
+			k_1*np.log(
+					np.exp(
+						(m1*InitialTensionAcceleration[0]
+						+ (F_MAX1*cT/lTo1)
+							* (1-np.exp(-InitialTension[0]/(F_MAX1*cT*kT)))
+							* (c3*InitialTension[0]
+								- m1*a_MTU1_o
+							)
+						)
+						/ (F_MAX1*c3**2
+							*c_1*k_1
+							*(F_MAX1*cT/lTo1)
+							*(1-np.exp(-InitialTension[0]/(F_MAX1*cT*kT)))
+						)
+					)
+					- 1
+				)
+				+ Lr1
+			)
+	L2_UB = lo2*L_CE_max_2*(
+			k_1*np.log(
+					np.exp(
+						(m2*InitialTensionAcceleration[1]
+						+ (F_MAX2*cT/lTo2)
+							* (1-np.exp(-InitialTension[1]/(F_MAX2*cT*kT)))
+							* (c4*InitialTension[1]
+								- m2*a_MTU2_o
+							)
+						)
+						/ (F_MAX2*c4**2
+							*c_1*k_1
+							*(F_MAX2*cT/lTo2)
+							*(1-np.exp(-InitialTension[1]/(F_MAX2*cT*kT)))
+						)
+					)
+					- 1
+				)
+				+ Lr1
+			)
+
+	L1_LB = 0.5*lo1
+	if L1_UB > 1.5*lo1:
+		L1_UB = 1.5*lo1
+	L1 = np.linspace(L1_LB, L2_UB, 1001)
+	# mu1, sigma1 = lo1, 0.1*lo1
+	# L1 = np.array(list(sorted(np.random.normal(mu1, sigma1, 1001))))
+	U1 = (m1*InitialTensionAcceleration[0]
+			+ (F_MAX1*cT/lTo1)
+				* (1-np.exp(-InitialTension[0]/(F_MAX1*cT*kT)))
+				* (c3*InitialTension[0]
+					- m1*a_MTU1_o
+					- F_MAX1*c3**3
+						*c_1*k_1
+						*np.log(np.exp((L1/(lo1*L_CE_max_1) - Lr1)/k_1)+1)
+					)
+		) \
+		/ (
+			F_MAX1*c3**2
+			*(F_MAX1*cT/lTo1)
+			*(1-np.exp(-InitialTension[0]/(F_MAX1*cT*kT)))
+			*np.exp(-(abs((L1-lo1)/(lo1*ω))**ρ))
+		)
+	# U1 = (
+	# 	InitialTension[0][0]/(F_MAX1*np.cos(α1))
+	#     - c_1*k_1*np.log(np.exp((L1/(lo1*L_CE_max_1) - Lr1)/k_1)+1)
+	#     ) / (np.exp(-(abs((L1-lo1)/(lo1*ω))**ρ)))
+
+	L2_LB = 0.5*lo2
+	if L2_UB > 1.5*lo2:
+		L2_UB = 1.5*lo2
+	L2 = np.linspace(L2_LB, L2_UB, 1001)
+	# mu2, sigma2 = lo2, 0.1*lo2
+	# L2 = np.array(list(sorted(np.random.normal(mu2, sigma2, 1001))))
+	U2 = (m2*InitialTensionAcceleration[1]
+			+ (F_MAX2*cT/lTo2)
+				* (1-np.exp(-InitialTension[1]/(F_MAX2*cT*kT)))
+				* (c4*InitialTension[1]
+					- m2*a_MTU2_o
+					- F_MAX2*c4**3
+						*c_1*k_1
+						*np.log(np.exp((L2/(lo2*L_CE_max_2) - Lr1)/k_1)+1)
+					)
+		) \
+		/ (
+			F_MAX2*c4**2
+			*(F_MAX2*cT/lTo2)
+			*(1-np.exp(-InitialTension[1]/(F_MAX2*cT*kT)))
+			*np.exp(-(abs((L2-lo2)/(lo2*ω))**ρ))
+		)
+	# U2 = (
+	# 	InitialTension[1][0]/(F_MAX2*np.cos(α2))
+	#     - c_1*k_1*np.log(np.exp((L2/(lo2*L_CE_max_2) - Lr1)/k_1)+1)
+	#     ) / (np.exp(-(abs((L2-lo2)/(lo2*ω))**ρ)))
 
 	if PlotBool == True:
 		plt.figure(figsize=(10,8))
@@ -100,6 +206,10 @@ def find_viable_initial_values(**kwargs):
 	2) ReturnAll - Can return all initial values for a given tension level. Will be fed through to return_random_initial_muscle_lengths_and_activations.
 
 	3) Seed - Can see the random tension generated. When FixedInitialTension is provided, this seed will apply only to the initial conditions for activation and muscle length.
+
+	4) InitialAngularAcceleration - Will be passed to return_random_initial_muscle_lengths_and_activations(), must be a scalar, int or numpy.float64.
+
+	5) InitialTensionAcceleration - Will be passed to return_random_initial_muscle_lengths_and_activations(), must be a numpy array of shape (2,).
 	"""
 	FixedInitialTension = kwargs.get("FixedInitialTension",None)
 	assert (FixedInitialTension is None) or \
@@ -120,12 +230,12 @@ def find_viable_initial_values(**kwargs):
 	assert type(Seed) in [float,int] or Seed is None, "Seed must be a float or an int or None."
 	np.random.seed(Seed)
 
-	X_o = np.array([Amp+Base,0])
+	X_o = np.array([r(0),dr(0)])
 	if FixedInitialTension is None:
-		T = return_initial_tension(X_o)
+		T = return_initial_tension(X_o,**kwargs)
 	else:
 		T = FixedInitialTension
-	L1,U1,L2,U2 = return_random_initial_muscle_lengths_and_activations(T,**kwargs)
+	L1,U1,L2,U2 = return_random_initial_muscle_lengths_and_activations(T,X_o,**kwargs)
 	rand_index = np.random.choice(len(L1),2)
 
 	if ReturnAll == False:
