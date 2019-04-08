@@ -3,16 +3,14 @@ from useful_functions import *
 import pickle
 
 X_o = np.array([r(0),dr(0)])
-InitialTensions = return_initial_tension(
+InitialTensions = [return_initial_tension(
                         X_o,
-                        ReturnMultipleInitialTensions=True,
+                        ReturnMultipleInitialTensions=False,
                         Bounds = [[0,0.4*F_MAX1],[0,0.4*F_MAX2]],
                         InitialAngularAcceleration=0
-                        ) # len::8
-# InitialTensions = InitialTensions[:4]
-InitialTensions = [InitialTensions[3]]
-# InitialTensions = [return_initial_tension(X_o)]*10
-NumberOfTensionTrials = len(InitialTensions)
+                        )]
+NumberOfTensionTrials = 1
+NumberOfTrials = 1
 InitialTensionsFromSuccessfulTrials = []
 TerminalWidth = get_terminal_width()
 count = 0
@@ -29,7 +27,7 @@ for i in range(NumberOfTensionTrials):
         	)
 
         TotalX_temp,TotalU_temp = run_N_sim_IB_sinus_act(
-                NumberOfTrials=1,
+                NumberOfTrials=NumberOfTrials,
                 FixedInitialTension=InitialTensions[i],
                 Amp="Scaled",
                 Freq=1,
@@ -76,7 +74,7 @@ if len(InitialTensions) != 0:
                             )
     # plt.show()
 
-    save_figures("output_figures/integrator_backstepping_sinusoidal_activations/","1DOF_2DOA_v1.0",SaveAsPDF=True)
+    save_figures("output_figures/integrator_backstepping_sinusoidal_activations_fixed_tensions/","1DOF_2DOA_v1.0",SaveAsPDF=True)
     plt.close('all')
     FormatedSaveData = {
             "States" : TotalX,
@@ -87,7 +85,7 @@ if len(InitialTensions) != 0:
     pickle.dump(
         FormatedSaveData,
         open(
-            "output_figures/integrator_backstepping_sinusoidal_activations/output.pkl",
+            "output_figures/integrator_backstepping_sinusoidal_activations_fixed_tensions/output.pkl",
             "wb"
             )
         )

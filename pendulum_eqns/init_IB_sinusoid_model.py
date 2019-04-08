@@ -9,6 +9,7 @@ def return_constraint_variables(t,X):
 	Constraint = A4(t,X,InitGlobals=True)
 	return(Coefficient1,Coefficient2,Constraint)
 
+
 def return_random_initial_muscle_lengths_and_activations(InitialTension,X_o,**kwargs):
     """
     This function returns initial muscle lengths and muscle activations for a given pretensioning level, as derived from (***insert file_name here for scratchwork***) for the system that starts from rest. (Ex. pendulum_eqns.reference_trajectories._01).
@@ -220,6 +221,158 @@ def return_random_initial_muscle_lengths_and_activations(InitialTension,X_o,**kw
 
     	plt.show()
     return(L1,U1,L2,U2)
+#### NEED TO RETURN INITIAL TENSIONS BEFORE CALLING THIS FUNCTION
+def return_initial_activations_given_muscle_lengths_and_tendon_tensions(InitialTension,L_m,X_o,**kwargs):
+	"""
+	This function returns initial muscle activations for a fixed muscle length and a given pretensioning level, as derived from (***insert file_name here for scratchwork***) for the system that starts from rest. (Ex. pendulum_eqns.reference_trajectories._01).
+
+	~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	**kwargs
+
+	~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	1) Seed - Can see the random tension generated. When FixedInitialTension is provided, this seed will apply only to the initial conditions for activation and muscle length.
+
+	2) InitialTensionAcceleration - must be a numpy array of shape (2,). Default is set to the value generated from joint angle IC's for pendulum_eqns.reference_trajectories._01.py (B+A,0,-Aw²,0,Aw⁴,etc.). If using a different reference trajectory, it would be best to either set all joint angle IC's to zero (like for pendulum_eqns.reference_trajectories._02.py) or to derive the value and pass it through the kwargs here (NOTE: must also consider how changing angular IC's effect other state derivative IC's).
+
+	3) InitialAngularAcceleration - must be either a numpy.float64, float, or int. Default is 0. Choice of reference trajectory *should* not matter as it is either 0 or d2r(0) (either by convention or by choice).
+
+	~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	"""
+	PlotBool = kwargs.get("PlotBool",False)
+	assert type(PlotBool)==bool,"PlotBool must be a boolean. Default is False."
+
+	InitialAngularAcceleration = kwargs.get(
+	            "InitialAngularAcceleration",
+	            0
+	            ) # 0 or d2r(0)
+	assert str(type(InitialAngularAcceleration)) in ["<class 'float'>","<class 'int'>","<class 'numpy.float64'>"], "InitialAngularAcceleration must be either a float or an int."
+
+	InitialTensionAcceleration = kwargs.get(
+	            "InitialTensionAcceleration",
+	            return_initial_tension_acceleration(
+	                InitialTension,
+	                X_o,
+	                InitialAngularAcceleration=InitialAngularAcceleration
+	                )
+	            )
+	assert np.shape(InitialTensionAcceleration)==(2,) \
+			and str(type(InitialTensionAcceleration))=="<class 'numpy.ndarray'>", \
+		"InitialTensionAcceleration must be a numpy array of shape (2,)"
+
+	assert len(L_m)==2 and type(L_m)==list, \
+		"L_m must be a list of length 2."
+
+
+	a_MTU1_o = np.sign(-r1(X_o[0]))*(
+		InitialAngularAcceleration
+		* np.sqrt(dr1_dθ(X_o[0])**2 + r1(X_o[0])**2)
+		+
+		X_o[1]**2
+		* dr1_dθ(X_o[0])
+		* (d2r1_dθ2(X_o[0]) + r1(X_o[0]))
+		/ np.sqrt(dr1_dθ(X_o[0])**2 + r1(X_o[0])**2)
+		)
+	a_MTU2_o = np.sign(-r2(X_o[0]))*(
+		InitialAngularAcceleration
+		* np.sqrt(dr2_dθ(X_o[0])**2 + r2(X_o[0])**2)
+		+
+		X_o[1]**2
+		* dr2_dθ(X_o[0])
+		* (d2r2_dθ2(X_o[0]) + r2(X_o[0]))
+		/ np.sqrt(dr2_dθ(X_o[0])**2 + r2(X_o[0])**2)
+		)
+
+	L1_UB = lo1*L_CE_max_1*(
+			k_1*np.log(
+					np.exp(
+						(m1*InitialTensionAcceleration[0]
+						+ (F_MAX1*cT/lTo1)
+							* (1-np.exp(-InitialTension[0]/(F_MAX1*cT*kT)))
+							* (c3*InitialTension[0]
+								- m1*a_MTU1_o
+							)
+						)
+						/ (F_MAX1*c3**2
+							*c_1*k_1
+							*(F_MAX1*cT/lTo1)
+							*(1-np.exp(-InitialTension[0]/(F_MAX1*cT*kT)))
+						)
+					)
+					- 1
+				)
+				+ Lr1
+			)
+	L2_UB = lo2*L_CE_max_2*(
+			k_1*np.log(
+					np.exp(
+						(m2*InitialTensionAcceleration[1]
+						+ (F_MAX2*cT/lTo2)
+							* (1-np.exp(-InitialTension[1]/(F_MAX2*cT*kT)))
+							* (c4*InitialTension[1]
+								- m2*a_MTU2_o
+							)
+						)
+						/ (F_MAX2*c4**2
+							*c_1*k_1
+							*(F_MAX2*cT/lTo2)
+							*(1-np.exp(-InitialTension[1]/(F_MAX2*cT*kT)))
+						)
+					)
+					- 1
+				)
+				+ Lr1
+			)
+
+	L1_LB = 0.5*lo1
+	if L1_UB > 1.5*lo1:
+		L1_UB = 1.5*lo1
+
+	assert L1_LB<=L_m[0]<=L1_UB, "For the chosen tension level, fixed muscle length produces infeasible activations."
+
+	U1 = (m1*InitialTensionAcceleration[0]
+			+ (F_MAX1*cT/lTo1)
+				* (1-np.exp(-InitialTension[0]/(F_MAX1*cT*kT)))
+				* (c3*InitialTension[0]
+					- m1*a_MTU1_o
+					- F_MAX1*c3**3
+						*c_1*k_1
+						*np.log(np.exp((L_m[0]/(lo1*L_CE_max_1) - Lr1)/k_1)+1)
+					)
+		) \
+		/ (
+			F_MAX1*c3**2
+			*(F_MAX1*cT/lTo1)
+			*(1-np.exp(-InitialTension[0]/(F_MAX1*cT*kT)))
+			*np.exp(-(abs((L_m[0]-lo1)/(lo1*ω))**ρ))
+		)
+	assert 0<=U1<=1, "U1 should be in [0,1)"
+
+	L2_LB = 0.5*lo2
+	if L2_UB > 1.5*lo2:
+		L2_UB = 1.5*lo2
+
+	assert L2_LB<=L_m[1]<=L2_UB, "For the chosen tension level, fixed muscle length produces infeasible activations."
+
+	U2 = (m2*InitialTensionAcceleration[1]
+			+ (F_MAX2*cT/lTo2)
+				* (1-np.exp(-InitialTension[1]/(F_MAX2*cT*kT)))
+				* (c4*InitialTension[1]
+					- m2*a_MTU2_o
+					- F_MAX2*c4**3
+						*c_1*k_1
+						*np.log(np.exp((L_m[1]/(lo2*L_CE_max_2) - Lr1)/k_1)+1)
+					)
+		) \
+		/ (
+			F_MAX2*c4**2
+			*(F_MAX2*cT/lTo2)
+			*(1-np.exp(-InitialTension[1]/(F_MAX2*cT*kT)))
+			*np.exp(-(abs((L_m[1]-lo2)/(lo2*ω))**ρ))
+		)
+	assert 0<=U2<=1, "U2 should be in [0,1)"
+	return(L_m[0],U1,L_m[1],U2)
 
 def find_viable_initial_values(**kwargs):
 	"""
@@ -240,6 +393,8 @@ def find_viable_initial_values(**kwargs):
 	4) InitialAngularAcceleration - Will be passed to return_random_initial_muscle_lengths_and_activations(), must be a scalar, int or numpy.float64.
 
 	5) InitialTensionAcceleration - Will be passed to return_random_initial_muscle_lengths_and_activations(), must be a numpy array of shape (2,).
+
+	6) FixedInitialMuscleLengths - must be a list of length 2 or None (Default). If is None, then program will assign this value randomly. Used for trials where we wish to hold muscle length constant for different tension levels.
 	"""
 	FixedInitialTension = kwargs.get("FixedInitialTension",None)
 	assert (FixedInitialTension is None) or \
@@ -253,6 +408,12 @@ def find_viable_initial_values(**kwargs):
 		+ str(np.shape(FixedInitialTension))
 		)
 
+	FixedInitialMuscleLengths = kwargs.get("FixedInitialMuscleLengths",None)
+	if FixedInitialMuscleLengths is not None:
+	    assert type(FixedInitialMuscleLengths)==list and \
+	            len(FixedInitialMuscleLengths)==2, \
+	        "FixedInitialMuscleLengths should be either None (Default) or a list of length 2."
+
 	ReturnAll = kwargs.get("ReturnAll",False)
 	assert type(ReturnAll)==bool, "ReturnAll must be a bool."
 
@@ -265,14 +426,33 @@ def find_viable_initial_values(**kwargs):
 		T = return_initial_tension(X_o,**kwargs)
 	else:
 		T = FixedInitialTension
-	L1,U1,L2,U2 = return_random_initial_muscle_lengths_and_activations(T,X_o,**kwargs)
-	rand_index = np.random.choice(len(L1),2)
 
-	if ReturnAll == False:
+	if FixedInitialMuscleLengths is None:
+		L1,U1,L2,U2 = return_random_initial_muscle_lengths_and_activations(T,X_o,**kwargs)
+
+		PositiveActivations = False
+		while PositiveActivations == False:
+			rand_index = np.random.choice(len(L1),2)
+			u1,u2 = U1[rand_index[0]],U2[rand_index[1]]
+			if u1>0 and u2>0:
+				PositiveActivations = True
+
+		if ReturnAll == False:
+			return(
+				T,
+				np.array([L1[rand_index[0]],L2[rand_index[1]]]),
+				np.array([U1[rand_index[0]],U2[rand_index[1]]])
+				)
+		else:
+			return(T,L1,L2,U1,U2)
+
+	else:
+		L1,U1,L2,U2 = return_initial_activations_given_muscle_lengths_and_tendon_tensions(T,FixedInitialMuscleLengths,X_o,**kwargs)
+
+		assert ReturnAll != True, "For fixed initial muscle lengths, ReturnAll must be False as the function return_initial_activations_given_muscle_lengths_and_tendon_tensions only returns single values."
+
 		return(
 			T,
-			np.array([L1[rand_index[0]],L2[rand_index[1]]]),
-			np.array([U1[rand_index[0]],U2[rand_index[1]]])
+			np.array([L1,L2]),
+			np.array([U1,U2])
 			)
-	else:
-		return(T,L1,L2,U1,U2)

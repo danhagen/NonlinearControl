@@ -58,8 +58,8 @@ u_2 &= \alpha_{2} \\
 
 """
 
-# g,L = 9.80, 0.45 #m/s², m
-g,L = 0, 0.45 #m/s², m REMOVING GRAVITY
+g,L = 9.80, 0.45 #m/s², m
+# g,L = 0, 0.45 #m/s², m REMOVING GRAVITY
 M = 1.6 # kg
 
 c1 = -(3*g)/(2*L)

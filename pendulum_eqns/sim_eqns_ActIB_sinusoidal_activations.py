@@ -78,6 +78,8 @@ def run_sim_IB_sinus_act(**kwargs):
 
     8) InitialAngularSnap - must be either a numpy.float64, float, or int. Default is set to 0 to simulate starting from rest. Choice of reference trajectory *should* not matter as it is either 0 or d4r(0) (either by convention or by choice).
 
+    9) FixedInitialMuscleLengths - must be a list of length 2 or None (Default). If is None, then program will assign this value randomly. Used for trials where we wish to hold muscle length constant for different tension levels.
+
     """
 
     thresh = kwargs.get("thresh",25)
@@ -112,8 +114,7 @@ def run_sim_IB_sinus_act(**kwargs):
         U = np.zeros((2,N))
         if Amp == "Scaled":
             Amp = 0.25*InitialActivations[0]
-        if Amp<0:
-            import ipdb; ipdb.set_trace()
+        assert Amp>0, "Amp became negative. Run Again."
 
         U[0,:] = InitialActivations[0] + Amp*(np.cos(2*np.pi*Freq*Time)-1)
         U[1,0] = InitialActivations[1]
@@ -170,6 +171,8 @@ def run_N_sim_IB_sinus_act(**kwargs):
     8) InitialTensionAcceleration - will be passed to find_viable_initial_values(**kwargs). Must be a numpy array of shape (2,)
 
     9) NumberOfTrials - should be an int.
+
+    10) FixedInitialMuscleLengths - must be a list of length 2 or None (Default). If is None, then program will assign this value randomly. Used for trials where we wish to hold muscle length constant for different tension levels. Will be passed to run_sim_IB_sinus_act(...)
     """
     NumberOfTrials = kwargs.get("NumberOfTrials",10)
     assert type(NumberOfTrials)==int and NumberOfTrials>0,"NumberOfTrials must be an positive int."
@@ -190,7 +193,6 @@ def run_N_sim_IB_sinus_act(**kwargs):
             + colored(TrialTitle,'white',attrs=["underline","bold"])
             )
         TotalX[j],TotalU[j] = run_sim_IB_sinus_act(**kwargs)
-
     i=0
     NumberOfSuccessfulTrials = NumberOfTrials
     while i < NumberOfSuccessfulTrials:
