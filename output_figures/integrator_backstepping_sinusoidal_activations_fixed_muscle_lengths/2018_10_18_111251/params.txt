@@ -1,3 +1,0 @@
-This used fixed muscle lengths. 
-
-However, the activation plots have scaled amplitudes based on initial activations. Will now try with fixed amplitude sinusoidal activation, shifted by initial activation.

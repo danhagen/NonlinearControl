@@ -221,6 +221,9 @@ def plot_N_sim_IB_sinus_act(t,TotalX,TotalU,**kwargs):
     ReturnError = kwargs.get("ReturnError",False)
     assert type(ReturnError)==bool, "ReturnError should be either True or False."
 
+    IgnorePennation = kwargs.get("IgnorePennation",False)
+    assert type(IgnorePennation)==bool, "IgnorePennation should be either True or False."
+
     fig1 = plt.figure(figsize = (9,7))
     fig1_title = "Underdetermined Forced-Pendulum Example"
     plt.title(fig1_title,fontsize=16,color='gray')
@@ -256,7 +259,7 @@ def plot_N_sim_IB_sinus_act(t,TotalX,TotalU,**kwargs):
             fig4 = plot_inputs(t,TotalU[j],Return=True,InputString = "Muscle Activations")
             fig5,Error = plot_l_m_comparison(
             t,TotalX[j],MuscleLengths=TotalX[j,4:6,:],
-            Return=True,InputString="Muscle Activation",ReturnError=True
+            Return=True,InputString="Muscle Activation",ReturnError=True,IgnorePennation=IgnorePennation
             )
             Error1 = Error[0][np.newaxis,:]
             Error2 = Error[1][np.newaxis,:]
@@ -267,7 +270,7 @@ def plot_N_sim_IB_sinus_act(t,TotalX,TotalU,**kwargs):
             	              Figure = fig4)
             fig5,Error = plot_l_m_comparison(
             t,TotalX[j],MuscleLengths=TotalX[j,4:6,:],
-            Return=True,InputString="Muscle Activation",ReturnError=True,
+            Return=True,InputString="Muscle Activation",ReturnError=True,IgnorePennation=IgnorePennation,
             Figure=fig5
             )
             Error1 = np.concatenate([Error1,Error[0][np.newaxis,:]],axis=0)
@@ -362,8 +365,20 @@ def plot_l_m_approximation_error_vs_tendon_tension(t,TotalX,Error,**kwargs):
     axes2[1][1].axis('off')
 
     for i in range(NumberOfTensionTrials):
-        error_function_1 = return_error_func_no_pennation(InitialTensions[i][0],F_MAX1,lTo1)
-        error_function_2 = return_error_func_no_pennation(InitialTensions[i][1],F_MAX2,lTo2)
+        error_function_1 = return_error_func(
+            InitialTensions[i][0],
+            F_MAX1,
+            lTo1,
+            α1,
+            Assumptions=["vT=0"]
+        )
+        error_function_2 = return_error_func(
+            InitialTensions[i][1],
+            F_MAX2,
+            lTo2,
+            α2,
+            Assumptions=["vT=0"]
+        )
         Error1 = error_function_1(TendonTension1)
         Error2 = error_function_2(TendonTension2)
         axes1[0][0].plot(TendonTension1,Error1,str(1-InitialTensions[i][0]/F_MAX1),lw=2)
@@ -387,6 +402,259 @@ def plot_l_m_approximation_error_vs_tendon_tension(t,TotalX,Error,**kwargs):
         plt.show()
 
 def plot_l_m_error_manifold(t,TotalX,Error,**kwargs):
+
+    Return = kwargs.get("Return",False)
+    assert type(Return) == bool, "Return should either be True or False"
+
+    InitialTensions = kwargs.get("InitialTensions",[TotalX[0,2:4,0]])
+    assert type(InitialTensions)==list,"InitialTensions must be a list or arrays"
+    assert all(np.array([str(type(el))=="<class 'numpy.ndarray'>" for el in InitialTensions])), "All elements of InitialTensions must be a numpy.ndarray."
+
+    Assumptions = kwargs.get("Assumptions",["penn=0","vT=0"])
+    assert (type(Assumptions)==list) \
+            and (len(Assumptions)!=0) \
+            and ("vT=0" in Assumptions), \
+        "Assumptions must be either ['penn=0','vT=0'] (default) or ['vT=0']."
+
+    NumberOfTensionTrials = len(InitialTensions)
+
+    fig1 = plt.figure(figsize=(12,9))
+    axes1_1 = fig1.add_subplot(221, projection='3d')
+    axes1_2 = fig1.add_subplot(222)
+    axes1_3 = fig1.add_subplot(223)
+    axes1_4 = fig1.add_subplot(224)
+
+    if ("vT=0" in Assumptions) and ("penn=0" in Assumptions):
+        plt.suptitle("Error from MTU Approx vs. Tendon Tension\n" + r"(Assuming $\Delta l_T \approx 0$ and $\rho \approx 0$)" + "\n Muscle 1",fontsize=16)
+    elif ("vT=0" in Assumptions):
+        plt.suptitle("Error from MTU Approx vs. Tendon Tension\n" + r"(Assuming $\Delta l_T \approx 0$)" + "\n Muscle 1",fontsize=16)
+
+    fig2 = plt.figure(figsize=(12,9))
+    axes2_1 = fig2.add_subplot(221, projection='3d')
+    axes2_2 = fig2.add_subplot(222)
+    axes2_3 = fig2.add_subplot(223)
+    axes2_4 = fig2.add_subplot(224)
+
+    if ("vT=0" in Assumptions) and ("penn=0" in Assumptions):
+        plt.suptitle("Error from MTU Approx vs. Tendon Tension\n" + r"(Assuming $\Delta l_T \approx 0$ and $\rho \approx 0$)" + "\n Muscle 2",fontsize=16)
+    elif ("vT=0" in Assumptions):
+        plt.suptitle("Error from MTU Approx vs. Tendon Tension\n" + r"(Assuming $\Delta l_T \approx 0$)" + "\n Muscle 2",fontsize=16)
+
+    MTLengthChange1 = np.concatenate(
+        [
+            (Time[1]-Time[0])*np.cumsum(
+                np.array(
+                    [v_MTU1(TotalX[i,:,j]) for j in range(np.shape(TotalX)[2])]
+                )
+            )[np.newaxis,:]
+            for i in range(np.shape(TotalX)[0])
+        ],
+        axis=1
+    )
+    MTLengthChange2 = np.concatenate(
+        [
+            (Time[1]-Time[0])*np.cumsum(
+                np.array(
+                    [v_MTU2(TotalX[i,:,j]) for j in range(np.shape(TotalX)[2])]
+                )
+            )[np.newaxis,:]
+            for i in range(np.shape(TotalX)[0])
+        ],
+        axis=1
+    )
+
+    statusbar = dsb(0,np.shape(TotalX)[0],
+        title=plot_l_m_approximation_error_vs_tendon_tension.__name__)
+    for i in range(np.shape(TotalX)[0]):
+        axes1_1.plot(MTLengthChange1[i,:],TotalX[i,2,:],Error[0][i])
+        axes1_2.plot(Time,Error[0][i])
+        axes1_3.plot(TotalX[i,2,:],-Time)
+
+        axes2_1.plot(MTLengthChange2[i,:],TotalX[i,3,:],Error[1][i])
+        axes2_2.plot(Time,Error[1][i])
+        axes2_3.plot(TotalX[i,3,:],-Time)
+        statusbar.update(i)
+
+    for i in range(TotalX.shape[0]):
+        error_function_1 = return_error_func(
+            TotalX[i,2,0],F_MAX1,lTo1,α1,
+            Assumptions=Assumptions
+        )
+        error_function_2 = return_error_func(
+            TotalX[i,3,0],F_MAX2,lTo2,α2,
+            Assumptions=Assumptions
+        )
+        error_function_pennation_included_1 = return_error_func(
+            TotalX[i,2,0],F_MAX1,lTo1,α1,
+            Assumptions=["vT=0"]
+        )
+        error_function_pennation_included_2 = return_error_func(
+            TotalX[i,3,0],F_MAX2,lTo2,α2,
+            Assumptions=["vT=0"]
+        )
+
+        MinimumTension1 = TotalX[:,2,:].min()
+        MaximumTension1 = TotalX[:,2,:].max()
+        Tension1Range = TotalX[:,2,:].max() - TotalX[:,2,:].min()
+        TendonTension1 = np.linspace(
+                    MinimumTension1 - 0.05*Tension1Range,
+                    MaximumTension1 + 0.05*Tension1Range,
+                    1001
+                    )
+
+        MinimumMTLength1 = MTLengthChange1.min()
+        MaximumMTLength1 = MTLengthChange1.max()
+        MTLength1Range = (
+            MTLengthChange1.max()
+            - MTLengthChange1.min()
+        )
+        MTLength1 = np.linspace(
+                    MinimumMTLength1 - 0.05*MTLength1Range,
+                    MaximumMTLength1 + 0.05*MTLength1Range,
+                    1001
+                    )
+
+        MTLength1Mesh, TendonTension1Mesh = \
+                np.meshgrid(MTLength1,TendonTension1)
+
+        MinimumTension2 = TotalX[:,3,:].min()
+        MaximumTension2 = TotalX[:,3,:].max()
+        Tension2Range = TotalX[:,3,:].max() - TotalX[:,3,:].min()
+        TendonTension2 = np.linspace(
+                    MinimumTension2 - 0.05*Tension2Range,
+                    MaximumTension2 + 0.05*Tension2Range,
+                    1001
+                    )
+
+        MinimumMTLength2 = MTLengthChange2.min()
+        MaximumMTLength2 = MTLengthChange2.max()
+        MTLength2Range = (
+            MTLengthChange2.max()
+            - MTLengthChange2.min()
+        )
+        MTLength2 = np.linspace(
+                    MinimumMTLength2 - 0.05*MTLength2Range,
+                    MaximumMTLength2 + 0.05*MTLength2Range,
+                    1001
+                    )
+
+        MTLength2Mesh, TendonTension2Mesh = \
+                np.meshgrid(MTLength2,TendonTension2)
+
+        if ("vT=0" in Assumptions) and ("penn=0" in Assumptions):
+            Error1 = error_function_1(TendonTension1Mesh,MTLength1Mesh)
+            Error_Pennation_Included_1 = \
+                error_function_pennation_included_1(TendonTension1)
+
+            Error2 = error_function_2(TendonTension2Mesh,MTLength2Mesh)
+            Error_Pennation_Included_2 = \
+                error_function_pennation_included_2(TendonTension2)
+        elif ("vT=0" in Assumptions):
+            Error1 = error_function_1(TendonTension1Mesh)
+            Error_Pennation_Included_1 = \
+                error_function_pennation_included_1(TendonTension1)
+
+            Error2 = error_function_2(TendonTension2Mesh)
+            Error_Pennation_Included_2 = \
+                error_function_pennation_included_2(TendonTension2)
+
+
+        axes1_1.plot_surface(MTLength1Mesh,
+                            TendonTension1Mesh,
+                            Error1,
+                            color=str(np.linspace(0.25,0.75,TotalX.shape[0])[i]))
+        axes1_4.plot(TendonTension1,Error_Pennation_Included_1,'0.70',lw=3)
+        axes1_4.plot(TotalX[i,2,:],Error[0][i],lw=3)
+        axes2_1.plot_surface(MTLength2Mesh,
+                            TendonTension2Mesh,
+                            Error2,
+                            color=str(np.linspace(0.25,0.75,TotalX.shape[0])[i]))
+        axes2_4.plot(TendonTension2,Error_Pennation_Included_2,'0.70',lw=3)
+        axes2_4.plot(TotalX[i,3,:],Error[1][i],lw=3)
+    axes1_1.set_xlabel("MT Length Change (m)")
+    axes1_1.set_ylabel("Tendon Tension (N)")
+    axes1_1.set_zlabel("Error (m)")
+    axes1_1.view_init(elev=20., azim=-30.)
+    axes1_2.set_xlabel(r"$\longrightarrow$ Time (s) $\longrightarrow$")
+    axes1_2.set_ylim(axes1_1.get_zlim())
+    axes1_2.spines['right'].set_visible(False)
+    axes1_2.spines['top'].set_visible(False)
+    # axes1_2.set_yticklabels(["" for el in axes1_2.get_yticks()])
+    axes1_3.set_ylabel(r"$\longleftarrow$ Time (s) $\longleftarrow$")
+    axes1_3.set_xlim(axes1_1.get_ylim())
+    axes1_3.spines['left'].set_visible(False)
+    axes1_3.spines['bottom'].set_visible(False)
+    # axes1_3.set_xticklabels(["" for el in axes1_1.get_xticks()])
+    axes1_3.yaxis.tick_right()
+    axes1_3.yaxis.set_label_position("right")
+    axes1_3.set_yticks(-np.array(list(range(N_seconds+1))))
+    axes1_3.set_yticklabels([str(-el) for el in axes1_3.get_yticks()])
+    axes1_4.set_frame_on(True)
+    axes1_4.set_xlim([TendonTension1.min(),TendonTension1.max()])
+    axes1_4.set_aspect(
+        (
+            np.diff(axes1_4.get_xlim())
+            / np.diff(axes1_4.get_ylim())
+        ),
+        adjustable='box'
+    )
+    # axes1_4.set_xticks([])
+    # axes1_4.set_yticks([])
+    # axes1_4.text(0.00,0.65,
+    #     (r'error $= \frac{\tau}{k\cos(\alpha_{1})}\cdot\ln\left(\frac{e^{T_{1}(t)/\tau} - 1}{e^{T_{1}(0)/\tau} - 1} \right )$'),fontsize=20)
+    # axes1_4.text(0.075,0.475,
+    #     (r'          - $\frac{1 - \cos(\alpha_{1})}{\cos(\alpha_{1})}\Delta l_{MT,1}$'), fontsize=16)
+    # axes1_4.text(0.15,0.325,
+    #     (r'where,    $\tau = F_{MAX,1}\cdot c^T \cdot k^T$'),fontsize=14)
+    # axes1_4.text(0.15,0.15,
+    #     (r'and    $k = \frac{F_{MAX,1}\cdot c^T}{l_{T_{o,1}}}$'),fontsize=14)
+    # axes1_4.axis('off')
+
+    axes2_1.set_xlabel("MT Length Change (m)")
+    axes2_1.set_ylabel("Tendon Tension (N)")
+    axes2_1.set_zlabel("Error (m)")
+    axes2_1.view_init(elev=20., azim=-30.)
+    axes2_2.set_xlabel(r"$\longrightarrow$ Time (s) $\longrightarrow$")
+    axes2_2.set_ylim(axes2_1.get_zlim())
+    axes2_2.spines['right'].set_visible(False)
+    axes2_2.spines['top'].set_visible(False)
+    # axes2_2.set_yticklabels(["" for el in axes2_2.get_yticks()])
+    axes2_3.set_ylabel(r"$\longleftarrow$ Time (s) $\longleftarrow$")
+    axes2_3.set_xlim(axes2_1.get_ylim())
+    axes2_3.spines['left'].set_visible(False)
+    axes2_3.spines['bottom'].set_visible(False)
+    # axes2_3.set_xticklabels(["" for el in axes2_1.get_xticks()])
+    axes2_3.yaxis.tick_right()
+    axes2_3.yaxis.set_label_position("right")
+    axes2_3.set_yticks(-np.array(list(range(N_seconds+1))))
+    axes2_3.set_yticklabels([str(-el) for el in axes1_3.get_yticks()])
+    axes2_4.set_frame_on(True)
+    axes2_4.set_xlim([TendonTension2.min(),TendonTension2.max()])
+    axes2_4.set_aspect(
+        (
+            np.diff(axes2_4.get_xlim())
+            / np.diff(axes2_4.get_ylim())
+        ),
+        adjustable='box'
+    )
+    # axes2_4.set_xticks([])
+    # axes2_4.set_yticks([])
+    # axes2_4.text(0.00,0.65,
+    #     (r'error $= \frac{\tau}{k}\cdot\ln\left(\frac{e^{T_{2}(t)/\tau} - 1}{e^{T_{2}(0)/\tau} - 1} \right )$'),fontsize=20)
+    # axes2_4.text(0.075,0.475,
+    #     (r'          - $\frac{1 - \cos(\alpha_{2})}{\cos(\alpha_{2})}\Delta l_{MT,2}$'), fontsize=16)
+    # axes2_4.text(0.15,0.325,
+    #     (r'where,    $\tau = F_{MAX,2}\cdot c^T \cdot k^T$'),fontsize=14)
+    # axes2_4.text(0.15,0.15,
+    #     (r'and    $k = \frac{F_{MAX,2}\cdot c^T}{l_{T_{o,2}}}$'),fontsize=14)
+    # axes2_4.axis('off')
+
+    if Return == True:
+        return([fig1,fig2])
+    else:
+        plt.show()
+
+def plot_l_m_error_manifold_no_pennation(t,TotalX,Error,**kwargs):
 
     Return = kwargs.get("Return",False)
     assert type(Return) == bool, "Return should either be True or False"
@@ -537,30 +805,83 @@ def plot_l_m_error_manifold(t,TotalX,Error,**kwargs):
     else:
         plt.show()
 
-def return_error(T,l_m,F_MAX,lTo,α):
+
+def return_error(T,dl_MTU,F_MAX,lTo,α,**kwargs):
+    Assumptions = kwargs.get("Assumptions",["penn=0","vT=0"])
+    assert (type(Assumptions)==list) \
+            and (len(Assumptions)!=0) \
+            and ("vT=0" in Assumptions), \
+        "Assumptions must be either ['penn=0','vT=0'] (default) or ['vT=0']."
     tau = F_MAX*cT*kT
     alpha = F_MAX*cT/lTo
-    error = (tau/alpha)*np.log((np.exp(T/tau) - 1)/(np.exp(T[0]/tau) - 1)) \
-                + (np.cos(α) - 1)*(l_m - l_m[0])
+    if ("vT=0" in Assumptions) and ("penn=0" in Assumptions):
+        """
+        Assumes small pennation and negligible tendon length change.
+        """
+        error = (
+            (tau/(kappa*np.cos(α)))
+            * np.log(
+                (np.exp(T/tau) - 1)
+                / (np.exp(T_o/tau) - 1)
+            )
+            - ((1 - np.cos(α))/np.cos(α))*dl_MTU
+        )
+    elif "vT=0" in Assumptions:
+        error = (
+            (tau/(kappa*np.cos(α)))
+            * np.log(
+                (np.exp(T/tau) - 1)
+                / (np.exp(T_o/tau) - 1)
+            )
+        )
     return(error)
 
-def return_error_func(T_o,l_mo,F_MAX,lTo,α):
-    tau = F_MAX*cT*kT
-    alpha = F_MAX*cT/lTo
-    def error_func(T,l_m):
-        return((tau/alpha)*np.log((np.exp(T/tau) - 1)/(np.exp(T_o/tau) - 1))
-                    + (np.cos(α) - 1)*(l_m - l_mo))
-    return(error_func)
-
-def return_error_no_pennation(T,F_MAX,lTo):
-    tau = F_MAX*cT*kT
-    alpha = F_MAX*cT/lTo
-    error = (tau/alpha)*np.log((np.exp(T/tau) - 1)/(np.exp(T[0]/tau) - 1))
-    return(error)
-
-def return_error_func_no_pennation(T_o,F_MAX,lTo):
-    tau = F_MAX*cT*kT
-    alpha = F_MAX*cT/lTo
-    def error_func(T):
-        return((tau/alpha)*np.log((np.exp(T/tau) - 1)/(np.exp(T_o/tau) - 1)))
-    return(error_func)
+def return_error_func(T_o,F_MAX,lTo,α,**kwargs):
+    Assumptions = kwargs.get("Assumptions",["penn=0","vT=0"])
+    assert (type(Assumptions)==list) \
+            and (len(Assumptions)!=0) \
+            and ("vT=0" in Assumptions), \
+        "Assumptions must be either ['penn=0','vT=0'] (default) or ['vT=0']."
+    if ("vT=0" in Assumptions) and ("penn=0" in Assumptions):
+        """
+        Assumes small pennation and negligible tendon length change.
+        """
+        tau = F_MAX*cT*kT
+        kappa = F_MAX*cT/lTo
+        def error_func(T,dl_MTU):
+            return(
+                (tau/(kappa*np.cos(α)))
+                * np.log(
+                    (np.exp(T/tau) - 1)
+                    / (np.exp(T_o/tau) - 1)
+                )
+                - ((1 - np.cos(α))/np.cos(α))*dl_MTU
+            )
+        return(error_func)
+    elif "vT=0" in Assumptions:
+        """
+        Assumes that tendon length change is negligble BUT assumes that muscle length is corrected for pennation. (Only a function of tension, then).
+        """
+        tau = F_MAX*cT*kT
+        kappa = F_MAX*cT/lTo
+        def error_func(T):
+            return(
+                (tau/(kappa*np.cos(α)))
+                * np.log(
+                    (np.exp(T/tau) - 1)
+                    / (np.exp(T_o/tau) - 1)
+                )
+            )
+        return(error_func)
+# def return_error_no_pennation(T,F_MAX,lTo):
+#     tau = F_MAX*cT*kT
+#     alpha = F_MAX*cT/lTo
+#     error = (tau/alpha)*np.log((np.exp(T/tau) - 1)/(np.exp(T[0]/tau) - 1))
+#     return(error)
+#
+# def return_error_func_no_pennation(T_o,F_MAX,lTo):
+#     tau = F_MAX*cT*kT
+#     alpha = F_MAX*cT/lTo
+#     def error_func(T):
+#         return((tau/alpha)*np.log((np.exp(T/tau) - 1)/(np.exp(T_o/tau) - 1)))
+#     return(error_func)
