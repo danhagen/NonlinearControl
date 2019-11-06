@@ -44,7 +44,7 @@ def return_muscle_settings(PreselectedMuscles=None):
 		'Elbow MA' : {	"Primary Source" : "Est", \
 		 				"Sources" : \
 							[\
-								MA_Settings(0, "m", None, None, 'Elbow', "Est")\
+								MA_Settings(0, "Est", "m", None, None, 'Elbow')\
 							]}, \
 		'Spindle' : Spindle_Settings(450,389.7,1.2,"Banks; 2006"),\
 		'Mass' : {	"Primary Source" : "Banks; 2006", \
