@@ -1,3 +1,0 @@
-Identified the source of the "Fuzziness" in the error plots. The equation for tendon tension utilized the pennation angle to determine the \delta l_{T} from MTU and muscle. This value will change the error when the pennation angle is not equal to zero. 
-
-Corrected error function takes muscle length into consideration in order to correct for this error.

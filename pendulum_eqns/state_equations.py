@@ -58,8 +58,8 @@ u_2 &= \alpha_{2} \\
 
 """
 
-# g,L = 9.80, 0.45 #m/s², m
-g,L = 0, 0.45 #m/s², m REMOVING GRAVITY
+g,L = 9.80, 0.45 #m/s², m
+# g,L = 0, 0.45 #m/s², m REMOVING GRAVITY
 M = 1.6 # kg
 
 c1 = -(3*g)/(2*L)
@@ -342,6 +342,9 @@ def plot_l_m_comparison(t,X,**kwargs):
 	ReturnError = kwargs.get("ReturnError",False)
 	assert type(ReturnError)==bool, "ReturnError must be either True or False."
 
+	IgnorePennation = kwargs.get("IgnorePennation",True)
+	assert type(IgnorePennation)==bool, "IgnorePennation must be either True (default) or False."
+
 	assert L_m is not None or V_m is not None, "Error! Need to input some length/velocity measurement for the muscles."
 
 	if L_m is None:
@@ -371,16 +374,28 @@ def plot_l_m_comparison(t,X,**kwargs):
 	if Figure is None:
 		fig, axes = plt.subplots(2,2,figsize = (14,7))
 		plt.suptitle(DescriptiveTitle,Fontsize=20,y=0.975)
-		l_m1_by_MTU_approximation = integrate.cumtrapz(
-										np.array(list(map(lambda X: v_MTU1(X),X.T))),\
-										t,initial=0
-									) \
-									+ np.ones(len(t))*l_m1[0]
-		l_m2_by_MTU_approximation = integrate.cumtrapz(
-										np.array(list(map(lambda X: v_MTU2(X),X.T))),\
-										t,initial=0
-									) \
-									+ np.ones(len(t))*l_m2[0]
+		if IgnorePennation==True:
+			l_m1_by_MTU_approximation = integrate.cumtrapz(
+											np.array(list(map(lambda X: v_MTU1(X),X.T))),\
+											t,initial=0
+										) \
+										+ np.ones(len(t))*l_m1[0]
+			l_m2_by_MTU_approximation = integrate.cumtrapz(
+											np.array(list(map(lambda X: v_MTU2(X),X.T))),\
+											t,initial=0
+										) \
+										+ np.ones(len(t))*l_m2[0]
+		else:
+			l_m1_by_MTU_approximation = integrate.cumtrapz(
+											np.array(list(map(lambda X: v_MTU1(X),X.T))),\
+											t,initial=0
+										)/np.cos(α1) \
+										+ np.ones(len(t))*l_m1[0]
+			l_m2_by_MTU_approximation = integrate.cumtrapz(
+											np.array(list(map(lambda X: v_MTU2(X),X.T))),\
+											t,initial=0
+										)/np.cos(α2) \
+										+ np.ones(len(t))*l_m2[0]
 
 		axes[0,0].plot(t,l_m1_by_MTU_approximation, '0.70')
 		axes[0,0].plot(t,l_m1)
@@ -402,16 +417,28 @@ def plot_l_m_comparison(t,X,**kwargs):
 	else:
 		fig = Figure[0]
 		axes = Figure[1]
-		l_m1_by_MTU_approximation = integrate.cumtrapz(
-										np.array(list(map(lambda X: v_MTU1(X),X.T))),\
-										t,initial=0
-									) \
-									+ np.ones(len(t))*l_m1[0]
-		l_m2_by_MTU_approximation = integrate.cumtrapz(
-										np.array(list(map(lambda X: v_MTU2(X),X.T))),\
-										t,initial=0
-									) \
-									+ np.ones(len(t))*l_m2[0]
+		if IgnorePennation==False:
+			l_m1_by_MTU_approximation = integrate.cumtrapz(
+											np.array(list(map(lambda X: v_MTU1(X),X.T))),\
+											t,initial=0
+										) \
+										+ np.ones(len(t))*l_m1[0]
+			l_m2_by_MTU_approximation = integrate.cumtrapz(
+											np.array(list(map(lambda X: v_MTU2(X),X.T))),\
+											t,initial=0
+										) \
+										+ np.ones(len(t))*l_m2[0]
+		else:
+			l_m1_by_MTU_approximation = integrate.cumtrapz(
+											np.array(list(map(lambda X: v_MTU1(X),X.T))),\
+											t,initial=0
+										)/np.cos(α1) \
+										+ np.ones(len(t))*l_m1[0]
+			l_m2_by_MTU_approximation = integrate.cumtrapz(
+											np.array(list(map(lambda X: v_MTU2(X),X.T))),\
+											t,initial=0
+										)/np.cos(α2) \
+										+ np.ones(len(t))*l_m2[0]
 		axes[0,0].plot(t,l_m1_by_MTU_approximation, '0.70')
 		axes[0,0].plot(t,l_m1)
 

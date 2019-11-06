@@ -1,1 +1,0 @@
-Tried averaging the input (U[:,i]+U[:,i+1])/2 for the state update law. Did not seem to effect error discrepency.
