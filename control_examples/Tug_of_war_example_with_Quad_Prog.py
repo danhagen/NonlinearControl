@@ -31,6 +31,26 @@ def k2_func(x1,u2):
     assert (x1 - (u2-us2))>=-1e-6
     return(k2)
 
+def fT1_func(x1,u1):
+    # return(k1)
+    assert (x1 + (u1-us1))>=-1e-6
+    return(k1*(x1 + (u1-us1))**2)
+
+def dfT1_dx1(x1,u1):
+    # return(k1)
+    assert (x1 + (u1-us1))>=-1e-6
+    return(2*k1*(x1 + (u1-us1)))
+
+def fT2_func(x1,u2):
+    # return(k2)
+    assert (x1 - (u2-us2))>=-1e-6
+    return(k2*(x1 - (u2-us2))**2)
+
+def dfT2_dx1(x1,u2):
+    # return(k2)
+    assert (x1 - (u2-us2))>=-1e-6
+    return(2*k2*(x1 - (u2-us2)))
+
 
 def dx1_dt(x1,x2,u1,u2):
     return(x2)
@@ -39,13 +59,18 @@ def dx2_dt(x1,x2,u1,u2):
     return(
         -K/M*x1
         - B/M*x2
-        - k1*(x1 + (u1-us1))/M
-        - k2*(x1 - (u2-us2))/M
+        - fT1_func(x1,u1)/M
+        + fT2_func(x1,u1)/M
     )
 
+Xd = np.zeros((2,len(t)))
+Xd[0,:] = -0.1*sin(2*np.pi*t)
+Xd[1,:] = -0.1*2*np.pi*cos(2*np.pi*t)
+
 X = np.zeros((2,len(t)))
-X[0,0] = -0.1
-X[1,0] = 0
+X[0,:] = 0
+X[1,:] = 0
+
 U = np.zeros((2,len(t)))
 statusbar = dsb(0,len(t)-1,title="What are you doing?...")
 P = np.array([[1,0],[0,1]])
