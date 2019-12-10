@@ -4,7 +4,7 @@ import numpy as np
 
 params = {
     "Joint Inertia" : 1.15e-2, # kg⋅m²
-    "Joint Damping" : 0.001, # N⋅s⋅m⁻¹
+    "Joint Damping" : 0.0001, # N⋅s⋅m⁻¹
     "Joint Mass" : 0.541, # kg
     "Joint Moment Arm" : 0.05, # m
     "Link Center of Mass" : 0.085, # m

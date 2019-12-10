@@ -1,417 +1,325 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from math import acos
 from danpy.sb import *
+from danpy.useful_functions import save_figures,is_number
 from matplotlib.patches import Ellipse
 import matplotlib.animation as animation
 import matplotlib.patches as patches
+import matplotlib.patheffects as pe
+from scipy import signal
 from params import *
+from plant import *
 
-def animate_trajectory(Time,X,U,**kwargs):
-    SaveAsGif = kwargs.get("SaveAsGif",False)
-    assert type(SaveAsGif)==bool, "SaveAsGif must be either True or False (Default)."
+class animate_pendulum:
+    def __init__(self,Time,X,U,Y,desiredOutput,**params):
+        self.L = params.get("Link Length", 0.3)
+        is_number(self.L,"Link Length",default=0.3)
 
-    FileName = kwargs.get("FileName","Pendulum_1DOF_2DOA_TT")
-    assert type(FileName)==str,"FileName must be a str."
+        self.Lcm = params.get("Link Center of Mass",0.085)
+        is_number(self.Lcm,"Link Center of Mass",default=0.085)
 
-        # Angles must be in degrees for animation
+        self.rj = params.get("Joint Moment Arm", 0.05)
+        is_number(self.rj,"Joint Moment Arm",default=0.05)
 
-    X1d = X[0,:]*(180/np.pi)
-    X2d = X[1,:]*(180/np.pi)
+        self.rm = params.get("Motor Moment Arm", 0.02)
+        is_number(self.rm,"Motor Moment Arm",default=0.02)
 
+        self.X = X
+        self.U = U
+        self.Y = Y
+        self.Time = Time
+        self.x1d = desiredOutput[0,:]
+        self.Sd = desiredOutput[1,:]
 
-    fig = plt.figure(figsize=(12,10))
-    ax0 = plt.subplot2grid((2,4),(0,0),colspan=2) # animation
-    ax1 = plt.subplot2grid((2,4),(0,2),colspan=2) # input
-    ax2 = plt.subplot2grid((2,4),(1,0),colspan=2) # pendulum angle
-    ax4 = plt.subplot2grid((2,4),(1,2),colspan=2) # pendulum angular velocity
+        self.fig = plt.figure(figsize=(12,10))
+        self.ax0 = self.fig.add_subplot(221) # animation
+        self.ax1 = self.fig.add_subplot(222) # input (torques)
+        self.ax2 = self.fig.add_subplot(223) # pendulum angle
+        self.ax4 = self.fig.add_subplot(224) # stiffness
 
-    plt.suptitle("Cart-Pendulum Example",Fontsize=28,y=0.95)
-    Pendulum_Width = 0.01*L1
-    Pendulum_Length = L1
+        plt.suptitle("Nonlinear Tendon-Driven Pendulum Example",fontsize=28,y=1.05)
 
-    Ground = plt.Rectangle(
-                (-52*Pendulum_Width/4,-Pendulum_Length/4),
-                52*Pendulum_Width/4,
-                Pendulum_Length/2,
-                Color='#4682b4')
-    ax0.add_patch(Ground)
-
-
-    Pendulum, = ax0.plot(
-                    [
-                        0,
-                        Pendulum_Length*np.sin(X[0,0])
-                    ],
-                    [
-                        0,
-                        -Pendulum_Length*np.cos(X[0,0])
-                    ],
-                    Color='0.50',
-                    lw = 10,
-                    solid_capstyle='round'
-                    )
-
-    max_tau = U.max()
-    if max_tau==0: max_tau=1
-
-    k = 0.075*Pendulum_Length
-    tau1_indicator, = ax0.plot(
-                    0.75*Pendulum_Length*np.sin(
-                            np.linspace(
-                                1.05*X[0,0],
-                                1.05*X[0,0] + (45*np.pi/180)*U[0,0]/max_tau,
-                                20
-                            )
-                        ),
-                    -0.75*Pendulum_Length*np.cos(
-                            np.linspace(
-                                1.05*X[0,0],
-                                1.05*X[0,0] + (45*np.pi/180)*U[0,0]/max_tau,
-                                20
-                            )
-                        ),
-                    Color='r',
-                    lw = 2,
-                    solid_capstyle = 'round'
-                    )
-    tau1_indicator_arrow, = ax0.plot(
-                    0.75*Pendulum_Length*np.sin(1.05*X[0,0] + (45*np.pi/180)*U[0,0]/max_tau)
-                    + [
-                        -k*np.sin((120*np.pi/180) - 1.05*X[0,0] - (45*np.pi/180)*U[0,0]/max_tau),
-                        0,
-                        -k*np.sin((60*np.pi/180) - 1.05*X[0,0] - (45*np.pi/180)*U[0,0]/max_tau)
-                    ],
-                    -0.75*Pendulum_Length*np.cos(1.05*X[0,0] + (45*np.pi/180)*U[0,0]/max_tau)
-                    + [
-                        -k*np.cos((120*np.pi/180) - 1.05*X[0,0] - (45*np.pi/180)*U[0,0]/max_tau),
-                        0,
-                        -k*np.cos((60*np.pi/180) - 1.05*X[0,0] - (45*np.pi/180)*U[0,0]/max_tau)
-                    ],
-                    Color='r',
-                    lw = 2,
-                    solid_capstyle='round'
-                    )
-
-    tau2_indicator, = ax0.plot(
-                    0.75*Pendulum_Length*np.sin(
-                            np.linspace(
-                                0.95*X[0,0]-(45*np.pi/180)*U[1,0]/max_tau,
-                                0.95*X[0,0],
-                                20
-                            )
-                        ),
-                    -0.75*Pendulum_Length*np.cos(
-                            np.linspace(
-                                0.95*X[0,0]-(45*np.pi/180)*U[1,0]/max_tau,
-                                0.95*X[0,0],
-                                20
-                            )
-                        ),
-                    Color='g',
-                    lw = 2,
-                    solid_capstyle = 'round'
-                    )
-    tau2_indicator_arrow, = ax0.plot(
-                    0.75*Pendulum_Length*np.sin(0.95*X[0,0] - (45*np.pi/180)*U[1,0]/max_tau)
-                    + [
-                        k*np.sin((60*np.pi/180) + 0.95*X[0,0] - (45*np.pi/180)*U[1,0]/max_tau),
-                        0,
-                        k*np.sin((120*np.pi/180) + 0.95*X[0,0] - (45*np.pi/180)*U[1,0]/max_tau)
-                    ],
-                    -0.75*Pendulum_Length*np.cos(0.95*X[0,0] - (45*np.pi/180)*U[1,0]/max_tau)
-                    + [
-                        -k*np.cos((60*np.pi/180) + 0.95*X[0,0] - (45*np.pi/180)*U[1,0]/max_tau),
-                        0,
-                        -k*np.cos((120*np.pi/180) + 0.95*X[0,0] - (45*np.pi/180)*U[1,0]/max_tau)
-                    ],
-                    Color='g',
-                    lw = 2,
-                    solid_capstyle='round'
-                    )
-
-
-    Pendulum_Attachment = plt.Circle((0,0),50*Pendulum_Width/4,Color='#4682b4')
-    ax0.add_patch(Pendulum_Attachment)
-
-    Pendulum_Rivet, = ax0.plot(
-        [0],
-        [0],
-        c='k',
-        marker='o',
-        lw=2
+        self.pendulumGround = plt.Rectangle(
+            (-0.25*self.L,-self.rj),
+            0.5*self.L,
+            self.rj,
+            Color='0.20'
         )
+        self.ax0.add_patch(self.pendulumGround)
 
-    ax0.get_xaxis().set_ticks([])
-    ax0.get_yaxis().set_ticks([])
-    ax0.set_frame_on(True)
-    ax0.set_xlim([-1.10*Pendulum_Length,1.10*Pendulum_Length])
-    ax0.set_ylim([-1.10*Pendulum_Length,1.10*Pendulum_Length])
-    ax0.set_aspect('equal')
+        # Tendon
+        self.jointWrapAround, = self.ax0.plot(
+            self.rj*np.sin(np.linspace(0,2*np.pi,1001)),
+            self.rj*np.cos(np.linspace(0,2*np.pi,1001)),
+            c='k',
+            lw=1
+        )
+        self.motor1WrapAround, = self.ax0.plot(
+            -self.L + self.rm*np.sin(np.linspace(0,2*np.pi,1001)),
+            -self.L + self.rm*np.cos(np.linspace(0,2*np.pi,1001)),
+            c='k',
+            lw=1
+        )
+        self.motor2WrapAround, = self.ax0.plot(
+            self.L + self.rm*np.sin(np.linspace(0,2*np.pi,1001)),
+            -self.L + self.rm*np.cos(np.linspace(0,2*np.pi,1001)),
+            c='k',
+            lw=1
+        )
+        self.phi1 = 225*np.pi/180 - acos((self.rj-self.rm)/(np.sqrt(2)*self.L))
+        self.phi2 = acos((self.rj-self.rm)/(np.sqrt(2)*self.L)) - 45*np.pi/180
 
-
-    TimeStamp = ax0.text(
-        0,
-        0.75*Pendulum_Length,
-        "Time: "+str(Time[0])+" s",
-        color='0.50',
-        fontsize=16,
-        horizontalalignment='center'
-    )
-
-    #Input
-
-    Input1, = ax1.plot([0],[U[0,0]],color = 'r')
-    Input2, = ax1.plot([0],[U[1,0]],color = 'g')
-    ax1.set_xlim(0,Time[-1])
-    ax1.set_xticks(list(np.linspace(0,Time[-1],5)))
-    ax1.set_xticklabels([str(0),'','','',str(Time[-1])])
-    if max(abs(U[0,:] - U[0,0]))<1e-7 and max(abs(U[1,:] - U[1,0]))<1e-7:
-        ax1.set_ylim([min(U[:,0]) - 5,max(U[:,0]) + 5])
-    else:
-        RangeU = U.max()-U.min()
-        ax1.set_ylim([U.min()-0.1*RangeU,U.max()+0.1*RangeU])
-
-    ax1.spines['right'].set_visible(False)
-    ax1.spines['top'].set_visible(False)
-    ax1.set_title("Tendon Tensions (N)",fontsize=16,fontweight = 4,color = 'k',y = 0.95)
-
-    #Pendulum Angle
-
-    Angle, = ax2.plot([0],[X1d[0]],color = 'k')
-    ax2.set_xlim(0,Time[-1])
-    ax2.set_xticks(list(np.linspace(0,Time[-1],5)))
-    ax2.set_xticklabels([str(0),'','','',str(Time[-1])])
-    if max(abs(X1d-X1d[0]))<1e-7:
-        ax2.set_ylim([X1d[0]-2,X1d[0]+2])
-    else:
-        RangeX1d= max(X1d)-min(X1d)
-        ax2.set_ylim([min(X1d)-0.1*RangeX1d,max(X1d)+0.1*RangeX1d])
-    ax2.spines['right'].set_visible(False)
-    ax2.spines['top'].set_visible(False)
-    ax2.set_title("Angle (deg)",fontsize=16,fontweight = 4,color = 'k',y = 0.95)
-
-    # Angular Velocity
-
-    AngularVelocity, = ax4.plot([0],[X2d[0]],color='k',linestyle='--')
-    ax4.set_xlim(0,Time[-1])
-    ax4.set_xticks(list(np.linspace(0,Time[-1],5)))
-    ax4.set_xticklabels([str(0),'','','',str(Time[-1])])
-    if max(abs(X2d-X2d[0]))<1e-7:
-        ax4.set_ylim([X2d[0]-2,X2d[0]+2])
-    else:
-        RangeX2d= max(X2d)-min(X2d)
-        ax4.set_ylim([min(X2d)-0.1*RangeX2d,max(X2d)+0.1*RangeX2d])
-    ax4.spines['right'].set_visible(False)
-    ax4.spines['top'].set_visible(False)
-    ax4.set_title("Angular Velocity (deg/s)",fontsize=16,fontweight = 4,color = 'k',y = 0.95)
-
-    def animate(i):
-        Pendulum.set_xdata([0,Pendulum_Length*np.sin(X[0,i])])
-        Pendulum.set_ydata([0,
-                            -Pendulum_Length*np.cos(X[0,i])])
-        tau1_indicator.set_xdata(
-            0.75*Pendulum_Length*np.sin(
-                np.linspace(
-                    1.05*X[0,i],
-                    1.05*X[0,i] + (45*np.pi/180)*U[0,i]/max_tau,
-                    20
-                )
+        self.springArray = (
+            self.rm*np.abs(
+                signal.sawtooth(5*2*np.pi*np.linspace(0,1,1001)-np.pi/2)
             )
+            -0.5*self.rm
         )
-        tau1_indicator.set_ydata(
-            -0.75*Pendulum_Length*np.cos(
-                np.linspace(
-                    1.05*X[0,i],
-                    1.05*X[0,i] + (45*np.pi/180)*U[0,i]/max_tau,
-                    20
-                )
-            )
-        )
-
-        tau1_indicator_arrow.set_xdata(
-            0.75*Pendulum_Length*np.sin(1.05*X[0,i] + (45*np.pi/180)*U[0,i]/max_tau)
-            + [
-                -k*np.sin((120*np.pi/180) - 1.05*X[0,i] - (45*np.pi/180)*U[0,i]/max_tau),
-                0,
-                -k*np.sin((60*np.pi/180) - 1.05*X[0,i] - (45*np.pi/180)*U[0,i]/max_tau)
+        self.spring_y = np.concatenate(
+            [
+                np.zeros((1001,)),
+                self.springArray,
+                np.zeros((1001,))
             ]
         )
-        tau1_indicator_arrow.set_ydata(
-            -0.75*Pendulum_Length*np.cos(1.05*X[0,i] + (45*np.pi/180)*U[0,i]/max_tau)
-            + [
-                -k*np.cos((120*np.pi/180) - 1.05*X[0,i] - (45*np.pi/180)*U[0,i]/max_tau),
-                0,
-                -k*np.cos((60*np.pi/180) - 1.05*X[0,i] - (45*np.pi/180)*U[0,i]/max_tau)
-            ]
-        )
-
-        tau2_indicator.set_xdata(
-            0.75*Pendulum_Length*np.sin(
+        self.tendonDeformation1 = self.rm*self.X[2,:]+self.rj*self.X[0,:]
+        self.tendonDeformation2 = self.rm*self.X[4,:]-self.rj*self.X[0,:]
+        self.maxTendonDeformation = max([
+            self.tendonDeformation1.max(),
+            self.tendonDeformation2.max()
+        ])
+        self.spring1_x = np.concatenate(
+            [
                 np.linspace(
-                    0.95*X[0,i]-(45*np.pi/180)*U[1,i]/max_tau,
-                    0.95*X[0,i],
-                    20
-                )
-            )
-        )
-        tau2_indicator.set_ydata(
-            -0.75*Pendulum_Length*np.cos(
+                    0,
+                    self.L*np.sqrt(2)/6*(2-self.tendonDeformation1/self.maxTendonDeformation),
+                    1001
+                ),
                 np.linspace(
-                    0.95*X[0,i]-(45*np.pi/180)*U[1,i]/max_tau,
-                    0.95*X[0,i],
-                    20
+                    self.L*np.sqrt(2)/6*(2-self.tendonDeformation1/self.maxTendonDeformation),
+                    self.L*np.sqrt(2)/6*(4+self.tendonDeformation1/self.maxTendonDeformation),
+                    1001
+                ),
+                np.linspace(
+                    self.L*np.sqrt(2)/6*(4+self.tendonDeformation1/self.maxTendonDeformation),
+                    self.L*np.sqrt(2),
+                    1001
                 )
-            )
-        )
-
-        tau2_indicator_arrow.set_xdata(
-            0.75*Pendulum_Length*np.sin(0.95*X[0,i] - (45*np.pi/180)*U[1,i]/max_tau)
-            + [
-                k*np.sin((60*np.pi/180) + 0.95*X[0,i] - (45*np.pi/180)*U[1,i]/max_tau),
-                0,
-                k*np.sin((120*np.pi/180) + 0.95*X[0,i] - (45*np.pi/180)*U[1,i]/max_tau)
             ]
         )
-        tau2_indicator_arrow.set_ydata(
-            -0.75*Pendulum_Length*np.cos(0.95*X[0,i] - (45*np.pi/180)*U[1,i]/max_tau)
-            + [
-                -k*np.cos((60*np.pi/180) + 0.95*X[0,i] - (45*np.pi/180)*U[1,i]/max_tau),
-                0,
-                -k*np.cos((120*np.pi/180) + 0.95*X[0,i] - (45*np.pi/180)*U[1,i]/max_tau)
+        self.spring2_x = np.concatenate(
+            [
+                np.linspace(
+                    0,
+                    self.L*np.sqrt(2)/6*(2-self.tendonDeformation2/self.maxTendonDeformation),
+                    1001
+                ),
+                np.linspace(
+                    self.L*np.sqrt(2)/6*(2-self.tendonDeformation2/self.maxTendonDeformation),
+                    self.L*np.sqrt(2)/6*(4+self.tendonDeformation2/self.maxTendonDeformation),
+                    1001
+                ),
+                np.linspace(
+                    self.L*np.sqrt(2)/6*(4+self.tendonDeformation2/self.maxTendonDeformation),
+                    self.L*np.sqrt(2),
+                    1001
+                )
             ]
         )
+        self.spring1Arrays = (
+            np.array([
+                [-self.L + self.rm*np.cos(self.phi1)],
+                [-self.L + self.rm*np.sin(self.phi1)]
+            ])
+            + np.array([
+                [np.cos(self.phi1-90*np.pi/180),-np.sin(self.phi1-90*np.pi/180)],
+                [np.sin(self.phi1-90*np.pi/180),np.cos(self.phi1-90*np.pi/180)]
+            ])@np.array([self.spring1_x[:,0],self.spring_y])
+        )
+        self.spring2Arrays = (
+            np.array([
+                [self.L + self.rm*np.cos(self.phi2)],
+                [-self.L + self.rm*np.sin(self.phi2)]
+            ])
+            + np.array([
+                [np.cos(self.phi2+90*np.pi/180),-np.sin(self.phi2+90*np.pi/180)],
+                [np.sin(self.phi2+90*np.pi/180),np.cos(self.phi2+90*np.pi/180)]
+            ])@np.array([self.spring2_x[:,0],self.spring_y])
+        )
+        self.spring1, = self.ax0.plot(
+            self.spring1Arrays[0,:],
+            self.spring1Arrays[1,:],
+            c='k',
+            lw=1
+        )
+        self.spring2, = self.ax0.plot(
+            self.spring2Arrays[0,:],
+            self.spring2Arrays[1,:],
+            c='k',
+            lw=1
+        )
 
+        # Pendulum
 
-        TimeStamp.set_text("Time: "+"{:.2f}".format(Time[i])+" s",)
+        self.pendulum, = self.ax0.plot(
+            [0,self.L*np.sin(X[0,0])],
+            [0,-self.L*np.cos(X[0,0])],
+            Color='0.50',
+            lw = 10,
+            solid_capstyle='round',
+            path_effects=[pe.Stroke(linewidth=12, foreground='k'), pe.Normal()]
+        )
 
-        Input1.set_xdata(Time[:i])
-        Input1.set_ydata(U[0,:i])
+        # Pendulum Joint
 
-        Input2.set_xdata(Time[:i])
-        Input2.set_ydata(U[1,:i])
+        self.pendulumJoint = plt.Circle((0,0),self.rj,Color='#4682b4')
+        self.ax0.add_patch(self.pendulumJoint)
 
-        Angle.set_xdata(Time[:i])
-        Angle.set_ydata(X1d[:i])
-
-        AngularVelocity.set_xdata(Time[:i])
-        AngularVelocity.set_ydata(X2d[:i])
-
-        return Pendulum,tau1_indicator,tau1_indicator_arrow,tau2_indicator,tau2_indicator_arrow,Input1,Input2,Angle,AngularVelocity,TimeStamp,
-
-    # Init only required for blitting to give a clean slate.
-    def init():
-        Ground = plt.Rectangle(
-                    (-52*Pendulum_Width/4,-Pendulum_Length/4),
-                    52*Pendulum_Width/4,
-                    Pendulum_Length/2,
-                    Color='#4682b4')
-        ax0.add_patch(Ground)
-
-
-        Pendulum, = ax0.plot(
-                        [
-                            0,
-                            Pendulum_Length*np.sin(X[0,0])
-                        ],
-                        [
-                            0,
-                            -Pendulum_Length*np.cos(X[0,0])
-                        ],
-                        Color='0.50',
-                        lw = 10,
-                        solid_capstyle='round'
-                        )
-
-        tau1_indicator, = ax0.plot(
-                        0.75*Pendulum_Length*np.sin(
-                                np.linspace(
-                                    1.05*X[0,0],
-                                    1.05*X[0,0] + (45*np.pi/180)*U[0,0]/max_tau,
-                                    20
-                                )
-                            ),
-                        -0.75*Pendulum_Length*np.cos(
-                                np.linspace(
-                                    1.05*X[0,0],
-                                    1.05*X[0,0] + (45*np.pi/180)*U[0,0]/max_tau,
-                                    20
-                                )
-                            ),
-                        Color='r',
-                        lw = 2,
-                        solid_capstyle = 'round'
-                        )
-        tau1_indicator_arrow, = ax0.plot(
-                        0.75*Pendulum_Length*np.sin(1.05*X[0,0] + (45*np.pi/180)*U[0,0]/max_tau)
-                        + [
-                            -k*np.sin((120*np.pi/180) - 1.05*X[0,0] - (45*np.pi/180)*U[0,0]/max_tau),
-                            0,
-                            -k*np.sin((60*np.pi/180) - 1.05*X[0,0] - (45*np.pi/180)*U[0,0]/max_tau)
-                        ],
-                        -0.75*Pendulum_Length*np.cos(1.05*X[0,0] + (45*np.pi/180)*U[0,0]/max_tau)
-                        + [
-                            -k*np.cos((120*np.pi/180) - 1.05*X[0,0] - (45*np.pi/180)*U[0,0]/max_tau),
-                            0,
-                            -k*np.cos((60*np.pi/180) - 1.05*X[0,0] - (45*np.pi/180)*U[0,0]/max_tau)
-                        ],
-                        Color='r',
-                        lw = 2,
-                        solid_capstyle='round'
-                        )
-
-        tau2_indicator, = ax0.plot(
-                        0.75*Pendulum_Length*np.sin(
-                                np.linspace(
-                                    0.95*X[0,0]-(45*np.pi/180)*U[1,0]/max_tau,
-                                    0.95*X[0,0],
-                                    20
-                                )
-                            ),
-                        -0.75*Pendulum_Length*np.cos(
-                                np.linspace(
-                                    0.95*X[0,0]-(45*np.pi/180)*U[1,0]/max_tau,
-                                    0.95*X[0,0],
-                                    20
-                                )
-                            ),
-                        Color='g',
-                        lw = 2,
-                        solid_capstyle = 'round'
-                        )
-        tau2_indicator_arrow, = ax0.plot(
-                        0.75*Pendulum_Length*np.sin(0.95*X[0,0] - (45*np.pi/180)*U[1,0]/max_tau)
-                        + [
-                            k*np.sin((60*np.pi/180) + 0.95*X[0,0] - (45*np.pi/180)*U[1,0]/max_tau),
-                            0,
-                            k*np.sin((120*np.pi/180) + 0.95*X[0,0] - (45*np.pi/180)*U[1,0]/max_tau)
-                        ],
-                        -0.75*Pendulum_Length*np.cos(0.95*X[0,0] - (45*np.pi/180)*U[1,0]/max_tau)
-                        + [
-                            -k*np.cos((60*np.pi/180) + 0.95*X[0,0] - (45*np.pi/180)*U[1,0]/max_tau),
-                            0,
-                            -k*np.cos((120*np.pi/180) + 0.95*X[0,0] - (45*np.pi/180)*U[1,0]/max_tau)
-                        ],
-                        Color='g',
-                        lw = 2,
-                        solid_capstyle='round'
-                        )
-
-
-        Pendulum_Attachment = plt.Circle((0,0),50*Pendulum_Width/4,Color='#4682b4')
-        ax0.add_patch(Pendulum_Attachment)
-
-        Pendulum_Rivet, = ax0.plot(
+        self.pendulumJointRivet, = self.ax0.plot(
             [0],
             [0],
             c='k',
             marker='o',
             lw=2
-            )
+        )
 
-        TimeStamp = ax0.text(
+        # Motors
+        self.motor1Joint = plt.Circle((-self.L,-self.L),self.rm,Color='#4682b4')
+        self.ax0.add_patch(self.motor1Joint)
+
+        self.motor1Rivet, = self.ax0.plot(
+            [-self.L],
+            [-self.L],
+            c='k',
+            marker='.',
+            lw=1
+        )
+
+        self.motor2Joint = plt.Circle((self.L,-self.L),self.rm,Color='#4682b4')
+        self.ax0.add_patch(self.motor2Joint)
+
+        self.motor2Rivet, = self.ax0.plot(
+            [self.L],
+            [-self.L],
+            c='k',
+            marker='.',
+            lw=1
+        )
+
+        self.max_tau = self.U.max()
+        if self.max_tau==0: self.max_tau=1
+
+        self.k = 0.075*self.L
+        self.inputIndicator1, = self.ax0.plot(
+            (
+                -self.L
+                + 2.5*self.rm*np.cos(
+                    np.linspace(
+                        135*np.pi/180,
+                        135*np.pi/180 + np.pi*self.U[0,0]/self.max_tau,
+                        20
+                    )
+                )
+            ),
+            (
+                -self.L
+                + 2.5*self.rm*np.sin(
+                    np.linspace(
+                        135*np.pi/180,
+                        135*np.pi/180 + np.pi*self.U[0,0]/self.max_tau,
+                        20
+                    )
+                )
+            ),
+            Color='r',
+            lw = 2,
+            solid_capstyle = 'round'
+            )
+        self.inputIndicator1Arrow, = self.ax0.plot(
+            (
+                -self.L
+                + 2.5*self.rm*np.cos(135*np.pi/180 + np.pi*self.U[0,0]/self.max_tau)
+                + self.k*(self.U[0,0]/self.max_tau)**(1/2)*np.array([
+                    np.cos(45*np.pi/180 + np.pi*self.U[0,0]/self.max_tau - 1.33*30*np.pi/180),
+                    0,
+                    np.cos(45*np.pi/180 + np.pi*self.U[0,0]/self.max_tau + 30*np.pi/180)
+                ])
+            ),
+            (
+                -self.L
+                + 2.5*self.rm*np.sin(135*np.pi/180 + np.pi*self.U[0,0]/self.max_tau)
+                + self.k*(self.U[0,0]/self.max_tau)**(1/2)*np.array([
+                    np.sin(45*np.pi/180 + np.pi*self.U[0,0]/self.max_tau - 1.33*30*np.pi/180),
+                    0,
+                    np.sin(45*np.pi/180 + np.pi*self.U[0,0]/self.max_tau + 30*np.pi/180)
+                ])
+            ),
+            Color='r',
+            lw = 2,
+            solid_capstyle='round'
+        )
+
+        self.inputIndicator2, = self.ax0.plot(
+            (
+                self.L
+                + 2.5*self.rm*np.cos(
+                    np.linspace(
+                        45*np.pi/180-np.pi*self.U[1,0]/self.max_tau,
+                        45*np.pi/180,
+                        20
+                    )
+                )
+            ),
+            (
+                -self.L
+                + 2.5*self.rm*np.sin(
+                    np.linspace(
+                        45*np.pi/180-np.pi*self.U[1,0]/self.max_tau,
+                        45*np.pi/180,
+                        20
+                    )
+                )
+            ),
+            Color='g',
+            lw = 2,
+            solid_capstyle = 'round'
+            )
+        self.inputIndicator2Arrow, = self.ax0.plot(
+            (
+                self.L
+                + 2.5*self.rm*np.cos(45*np.pi/180 - np.pi*self.U[1,0]/self.max_tau)
+                + self.k*(self.U[1,0]/self.max_tau)**(1/2)*np.array([
+                    np.cos(135*np.pi/180 - np.pi*self.U[1,0]/self.max_tau - 30*np.pi/180),
+                    0,
+                    np.cos(135*np.pi/180 - np.pi*self.U[1,0]/self.max_tau + 1.33*30*np.pi/180)
+                ])
+            ),
+            (
+                -self.L
+                + 2.5*self.rm*np.sin(45*np.pi/180 - np.pi*self.U[1,0]/self.max_tau)
+                + self.k*(self.U[1,0]/self.max_tau)**(1/2)*np.array([
+                    np.sin(135*np.pi/180 - np.pi*self.U[1,0]/self.max_tau - 30*np.pi/180),
+                    0,
+                    np.sin(135*np.pi/180 - np.pi*self.U[1,0]/self.max_tau + 1.33*30*np.pi/180)
+                ])
+            ),
+            Color='g',
+            lw = 2,
+            solid_capstyle='round'
+        )
+
+        self.ax0.get_xaxis().set_ticks([])
+        self.ax0.get_yaxis().set_ticks([])
+        self.ax0.set_frame_on(True)
+        self.ax0.set_xlim([-1.1*self.L-2.5*self.rm,1.1*self.L+2.5*self.rm])
+        self.ax0.set_ylim([-1.1*self.L-2.5*self.rm,1.1*self.L])
+        self.ax0.set_aspect('equal')
+
+        self.timeStamp = self.ax0.text(
             0,
-            0.75*Pendulum_Length,
-            "Time: "+"{:.2f}".format(Time[0])+" s",
+            0.75*self.L,
+            "Time: "+str(self.Time[0])+" s",
             color='0.50',
             fontsize=16,
             horizontalalignment='center'
@@ -419,44 +327,205 @@ def animate_trajectory(Time,X,U,**kwargs):
 
         #Input
 
-        Input1, = ax1.plot([0],[U[0,0]],color = 'r')
-        Input2, = ax1.plot([0],[U[1,0]],color = 'g')
+        self.input1, = self.ax1.plot([0],[self.U[0,0]],color = 'r')
+        self.input2, = self.ax1.plot([0],[self.U[1,0]],color = 'g')
+        self.ax1.set_xlim(0,self.Time[-1])
+        self.ax1.set_xticks(list(np.linspace(0,self.Time[-1],5)))
+        self.ax1.set_xticklabels([str(0),'','','',str(self.Time[-1])+"s"])
+        if max(abs(self.U[0,:] - self.U[0,0]))<1e-7 and max(abs(self.U[1,:] - self.U[1,0]))<1e-7:
+            self.ax1.set_ylim([min(self.U[:,0]) - 5,max(self.U[:,0]) + 5])
+        else:
+            self.RangeU = self.U.max()-self.U.min()
+            self.ax1.set_ylim([self.U.min()-0.1*self.RangeU,self.U.max()+0.1*self.RangeU])
 
-        #Pendulum Angle
+        self.ax1.spines['right'].set_visible(False)
+        self.ax1.spines['top'].set_visible(False)
+        self.ax1.set_title("Motor Torques (Nm)",fontsize=16,fontweight = 4,color = 'k',y = 1.00)
 
-        Angle, = ax2.plot([0],[X1d[0]],color = 'k')
+        #pendulum angle
+        self.Y1d = self.Y[0,:]*180/np.pi
+        self.angle, = self.ax2.plot([0],[self.Y1d[0]],color = 'C0')
+        self.desiredAngle, = self.ax2.plot(Time,self.x1d*180/np.pi,c='k',linestyle='--',lw=1)
+        self.ax2.set_xlim(0,self.Time[-1])
+        self.ax2.set_xticks(list(np.linspace(0,self.Time[-1],5)))
+        self.ax2.set_xticklabels([str(0),'','','',str(self.Time[-1])+"s"])
+        if max(abs(self.Y1d-self.Y1d[0]))<1e-7:
+            self.ax2.set_ylim([self.Y1d[0]-2,self.Y1d[0]+2])
+        else:
+            self.RangeY1d= max(self.Y1d)-min(self.Y1d)
+            self.ax2.set_ylim([min(self.Y1d)-0.1*self.RangeY1d,max(self.Y1d)+0.1*self.RangeY1d])
+            y1_min = np.floor((self.Y[0,:].min()*180/np.pi)/22.5)*22.5
+            y1_min = min([y1_min,np.floor((self.x1d.min()*180/np.pi)/22.5)*22.5])
+            y1_max = np.ceil((self.Y[0,:].max()*180/np.pi)/22.5)*22.5
+            y1_max = max([y1_max,np.ceil((self.x1d.max()*180/np.pi)/22.5)*22.5])
+            yticks = np.arange(y1_min,y1_max+22.5,22.5)
+            yticklabels = []
+            for el in yticks:
+            	if el%45==0:
+            		yticklabels.append(str(int(el)) + r"$^\circ$")
+            	else:
+            		yticklabels.append("")
+            self.ax2.set_yticks(yticks)
+            self.ax2.set_yticklabels(yticklabels)
+        self.ax2.spines['right'].set_visible(False)
+        self.ax2.spines['top'].set_visible(False)
+        self.ax2.set_title("Angle (deg)",fontsize=16,fontweight = 4,color = 'C0',y = 1.00)
 
-        # Angular Velocity
+        # pendulum stiffness
 
-        AngularVelocity, = ax4.plot([0],[X2d[0]],color='k',linestyle='--')
+        self.stiffness, = self.ax4.plot([0],[self.Y[1,0]],color='C1')
+        self.desiredStiffness, = self.ax4.plot(Time,self.Sd,c='k',linestyle='--',lw=1)
+        self.ax4.set_xlim(0,self.Time[-1])
+        self.ax4.set_xticks(list(np.linspace(0,self.Time[-1],5)))
+        self.ax4.set_xticklabels([str(0),'','','',str(self.Time[-1])+"s"])
+        if max(abs(self.Y[1,:]-self.Y[1,0]))<1e-7:
+            self.ax4.set_ylim([self.Y[1,0]-2,self.Y[1,0]+2])
+        else:
+            self.RangeY2= max(self.Y[1,:])-min(self.Y[1,:])
+            self.ax4.set_ylim([min(self.Y[1,:])-0.1*self.RangeY2,max(self.Y[1,:])+0.1*self.RangeY2])
+        self.ax4.spines['right'].set_visible(False)
+        self.ax4.spines['top'].set_visible(False)
+        self.ax4.set_title("Stiffness (Nm/rad)",fontsize=16,fontweight = 4,color = 'C1',y = 1.00)
+
+    def animate(self,i):
+        self.spring1Arrays = (
+            np.array([
+                [-self.L + self.rm*np.cos(self.phi1)],
+                [-self.L + self.rm*np.sin(self.phi1)]
+            ])
+            + np.array([
+                [np.cos(self.phi1-90*np.pi/180),-np.sin(self.phi1-90*np.pi/180)],
+                [np.sin(self.phi1-90*np.pi/180),np.cos(self.phi1-90*np.pi/180)]
+            ])@np.array([self.spring1_x[:,i],self.spring_y])
+        )
+        self.spring1.set_xdata(self.spring1Arrays[0,:])
+
+        self.spring2Arrays = (
+            np.array([
+                [self.L + self.rm*np.cos(self.phi2)],
+                [-self.L + self.rm*np.sin(self.phi2)]
+            ])
+            + np.array([
+                [np.cos(self.phi2+90*np.pi/180),-np.sin(self.phi2+90*np.pi/180)],
+                [np.sin(self.phi2+90*np.pi/180),np.cos(self.phi2+90*np.pi/180)]
+            ])@np.array([self.spring2_x[:,i],self.spring_y])
+        )
+        self.spring2.set_xdata(self.spring2Arrays[0,:])
+
+        self.pendulum.set_xdata([0,self.L*np.sin(self.X[0,i])])
+        self.pendulum.set_ydata([0,-self.L*np.cos(self.X[0,i])])
+
+        self.inputIndicator1.set_xdata(
+            -self.L
+            + 2.5*self.rm*np.cos(
+                np.linspace(
+                    135*np.pi/180,
+                    135*np.pi/180 + np.pi*self.U[0,i]/self.max_tau,
+                    20
+                )
+            )
+        )
+        self.inputIndicator1.set_ydata(
+            -self.L
+            + 2.5*self.rm*np.sin(
+                np.linspace(
+                    135*np.pi/180,
+                    135*np.pi/180 + np.pi*self.U[0,i]/self.max_tau,
+                    20
+                )
+            )
+        )
+
+        self.inputIndicator1Arrow.set_xdata(
+            -self.L
+            + 2.5*self.rm*np.cos(135*np.pi/180 + np.pi*self.U[0,i]/self.max_tau)
+            + self.k*(self.U[0,i]/self.max_tau)**(1/2)*np.array([
+                np.cos(45*np.pi/180 + np.pi*self.U[0,i]/self.max_tau - 1.33*30*np.pi/180),
+                0,
+                np.cos(45*np.pi/180 + np.pi*self.U[0,i]/self.max_tau + 30*np.pi/180)
+            ])
+        )
+        self.inputIndicator1Arrow.set_ydata(
+            -self.L
+            + 2.5*self.rm*np.sin(135*np.pi/180 + np.pi*self.U[0,i]/self.max_tau)
+            + self.k*(self.U[0,i]/self.max_tau)**(1/2)*np.array([
+                np.sin(45*np.pi/180 + np.pi*self.U[0,i]/self.max_tau - 1.33*30*np.pi/180),
+                0,
+                np.sin(45*np.pi/180 + np.pi*self.U[0,i]/self.max_tau + 30*np.pi/180)
+            ])
+        )
+
+        self.inputIndicator2.set_xdata(
+            self.L
+            + 2.5*self.rm*np.cos(
+                np.linspace(
+                    45*np.pi/180-np.pi*self.U[1,i]/self.max_tau,
+                    45*np.pi/180,
+                    20
+                )
+            )
+        )
+        self.inputIndicator2.set_ydata(
+            -self.L
+            + 2.5*self.rm*np.sin(
+                np.linspace(
+                    45*np.pi/180-np.pi*self.U[1,i]/self.max_tau,
+                    45*np.pi/180,
+                    20
+                )
+            )
+        )
+
+        self.inputIndicator2Arrow.set_xdata(
+            self.L
+            + 2.5*self.rm*np.cos(45*np.pi/180 - np.pi*self.U[1,i]/self.max_tau)
+            + self.k*(self.U[1,i]/self.max_tau)**(1/2)*np.array([
+                np.cos(135*np.pi/180 - np.pi*self.U[1,i]/self.max_tau - 30*np.pi/180),
+                0,
+                np.cos(135*np.pi/180 - np.pi*self.U[1,i]/self.max_tau + 1.33*30*np.pi/180)
+            ])
+        )
+        self.inputIndicator2Arrow.set_ydata(
+            -self.L
+            + 2.5*self.rm*np.sin(45*np.pi/180 - np.pi*self.U[1,i]/self.max_tau)
+            + self.k*(self.U[1,i]/self.max_tau)**(1/2)*np.array([
+                np.sin(135*np.pi/180 - np.pi*self.U[1,i]/self.max_tau - 30*np.pi/180),
+                0,
+                np.sin(135*np.pi/180 - np.pi*self.U[1,i]/self.max_tau + 1.33*30*np.pi/180)
+            ])
+        )
 
 
-        Ground.set_visible(True)
-        Pendulum.set_visible(False)
-        tau1_indicator.set_visible(False)
-        tau1_indicator_arrow.set_visible(False)
-        tau2_indicator.set_visible(False)
-        tau2_indicator_arrow.set_visible(False)
-        Pendulum_Attachment.set_visible(False)
-        Pendulum_Rivet.set_visible(False)
-        TimeStamp.set_visible(False)
-        Input1.set_visible(False)
-        Input2.set_visible(False)
-        Angle.set_visible(False)
-        AngularVelocity.set_visible(False)
+        self.timeStamp.set_text("Time: "+"{:.2f}".format(self.Time[i])+" s",)
 
-        return Ground,Pendulum,tau1_indicator,tau1_indicator_arrow,tau2_indicator,tau2_indicator_arrow,Pendulum_Attachment,Pendulum_Rivet,TimeStamp,Input1,Input2,Angle,AngularVelocity,
+        self.input1.set_xdata(self.Time[:i])
+        self.input1.set_ydata(self.U[0,:i])
 
-    dt = Time[1]-Time[0]
-    if dt <= 0.0001:
-        framestep=2000
-    elif dt <= 0.001:
-        framestep=200
-    elif dt <= 0.01:
-        framestep=10
-    else:
-        framestep=5
-    ani = animation.FuncAnimation(fig, animate, frames=np.arange(0,len(Time)-1,framestep),init_func=init, blit=False)
-    if SaveAsGif==True:
-        ani.save(FileName+'.gif', writer='imagemagick', fps=10)
+        self.input2.set_xdata(self.Time[:i])
+        self.input2.set_ydata(self.U[1,:i])
+
+        self.angle.set_xdata(self.Time[:i])
+        self.angle.set_ydata(self.Y1d[:i])
+
+        self.stiffness.set_xdata(self.Time[:i])
+        self.stiffness.set_ydata(self.Y[1,:i])
+
+        return self.pendulum,self.spring1,self.spring2,self.inputIndicator1,self.inputIndicator1Arrow,self.inputIndicator2,self.inputIndicator2Arrow,self.input1,self.input2,self.angle,self.stiffness,self.timeStamp,
+
+    def start(self,interval):
+        self.anim = animation.FuncAnimation(self.fig, self.animate,
+            frames=len(self.Time), interval=interval, blit=False)
+
+if __name__ == '__main__':
+    Time,X,U,Y,plant1,plant2 = test_plant()
+    downsamplingFactor = 30
+    ani = animate_pendulum(
+        Time[::downsamplingFactor],
+        X[:,::downsamplingFactor],
+        U[:,::downsamplingFactor],
+        Y[:,::downsamplingFactor],
+        plant2.desiredOutput[:,::downsamplingFactor],**params
+    )
+    ani.start(downsamplingFactor)
+    ani.anim.save('test.mp4', writer='ffmpeg', fps=1000/downsamplingFactor)
     plt.show()
