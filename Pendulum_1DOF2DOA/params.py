@@ -15,7 +15,17 @@ params = {
     "Spring Stiffness Coefficient" : 200, # N
     "Spring Shape Coefficient" : 10, # unit-less
     "Simulation Duration" : 100, # s
-    "dt" : 0.01 # s
+    "dt" : 0.01, # s
+    "Position Gains" : {
+        0 : 3162.3,
+        1 : 1101.9,
+        2 : 192.0,
+        3 : 19.6
+    },
+    "Stiffness Gains" : {
+        0 : 316.2,
+        1 : 25.1
+    }
 }
 
 # h is the step used to determine the derivative

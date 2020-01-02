@@ -59,8 +59,22 @@ class plant_pendulum_1DOF2DOF:
         self.dt = params.get("dt", 0.01)
         is_number(self.dt,"dt")
 
-        self.offset = params.get("offset", 0)
-        is_number(self.offset,"offset")
+        self.k0 = params.get(
+            "Position Gains",
+            {
+                0 : 3162.3,
+                1 : 1101.9,
+                2 : 192.0,
+                3 : 19.6
+            }
+        )
+        self.ks = params.get(
+            "Stiffness Gains",
+            {
+                0 : 316.2,
+                1 : 25.1
+            }
+        )
 
         self.Lf4h0_list = []
         self.Lf2hs_list = []
@@ -326,12 +340,12 @@ class plant_pendulum_1DOF2DOF:
 
     def f(self,X):
         result = np.zeros((6,1))
-        result[0,0] = self.f1_func(X)
-        result[1,0] = self.f2_func(X)
-        result[2,0] = self.f3_func(X)
-        result[3,0] = self.f4_func(X)
-        result[4,0] = self.f5_func(X)
-        result[5,0] = self.f6_func(X)
+        result[0,0] = self.f1
+        result[1,0] = self.f2
+        result[2,0] = self.f3
+        result[3,0] = self.f4
+        result[4,0] = self.f5
+        result[5,0] = self.f6
         return(result)
     def g(self,X):
         result = np.matrix(np.zeros((6,2)))
@@ -347,18 +361,10 @@ class plant_pendulum_1DOF2DOF:
         )
         return(result)
 
-    def create_derivative_functions(self):
-        grad_f2_func = nd.Gradient(self.f2_func)
-        hess_f2_func = nd.Hessian(self.f2_func)
-        jac_f_func = nd.Jacobian(self.f)
-        out = {
-            "Gradient of f2" : grad_f2_func,
-            "Hessian of f2" : hess_f2_func,
-            "Jacobian of f" : jac_f_func
-        }
-        return(out)
-
     def forward_simulation(self,Time,X_o,U=None):
+        """
+        Building our own f_array to reduce the number of calls for f_funcs by making it a static call for each iteration in the FBL instance.
+        """
         assert len(X_o)==6, "X_o must have 6 elements, not " + str(len(X_o)) + "."
         dt = Time[1]-Time[0]
         if U is None:
@@ -369,17 +375,19 @@ class plant_pendulum_1DOF2DOF:
         Y = np.zeros((2,len(Time)))
         X[:,0] = X_o
         Y[:,0] = self.h(X[:,0])
-        # self.update_state_variables(X_o)
-        # deriv_funcs = self.create_derivative_functions()
-        # self.grad_f2_func = deriv_funcs["Gradient of f2"]
-        # self.hess_f2_func = deriv_funcs["Hessian of f2"]
-        # self.jac_f_func = deriv_funcs["Jacobian of f"]
         statusbar=dsb(0,len(Time)-1,title="Forward Simulation (Custom)")
         for i in range(len(Time)-1):
+            f_array = np.zeros((6,1))
+            f_array[0,0] = self.f1_func(X[:,i])
+            f_array[1,0] = self.f2_func(X[:,i])
+            f_array[2,0] = self.f3_func(X[:,i])
+            f_array[3,0] = self.f4_func(X[:,i])
+            f_array[4,0] = self.f5_func(X[:,i])
+            f_array[5,0] = self.f6_func(X[:,i])
             X[:,i+1] = (
                 X[:,i]
                 + dt*(
-                    self.f(X[:,i])
+                    f_array
                     + self.g(X[:,i])@U[:,np.newaxis,i]
                 ).T
             )
@@ -393,59 +401,46 @@ class plant_pendulum_1DOF2DOF:
     def Lfh0(self,X):
         return(X[1])
     def Lf2h0(self,X):
-        return(self.f2_func(X))
-    # def Lf3h0(self,X):
-    #     return(
-    #         (self.grad_f2_func(X)@self.f(X))[0]
-    #     )
+        return(self.f2)
     def Lf3h0(self,X):
         result = (
-            self.df2dx1_func(X)*self.f1_func(X)
-            + self.df2dx2_func(X)*self.f2_func(X)
-            + self.df2dx3_func(X)*self.f3_func(X)
-            + self.df2dx5_func(X)*self.f5_func(X)
+            self.df2dx1*self.f1
+            + self.df2dx2*self.f2
+            + self.df2dx3*self.f3
+            + self.df2dx5*self.f5
         )
         return(result)
-    # def Lf4h0(self,X):
-    #     return(
-    #         (
-    #             (
-    #                 self.grad_f2_func(X)@self.jac_f_func(X)
-    #                 + (self.hess_f2_func(X)@self.f(X)).T
-    #             )@self.f(X)
-    #         )[0,0]
-    #     )
     def Lf4h0(self,X):
         return(
             (
-                self.d2f2dx12_func(X)*self.f1_func(X)
-                + self.d2f2dx1x2_func(X)*self.f2_func(X)
-                + self.df2dx2_func(X)*self.df2dx1_func(X)
-                + self.d2f2dx1x3_func(X)*self.f3_func(X)
-                + self.d2f2dx1x5_func(X)*self.f5_func(X)
-            ) * self.f1_func(X)
+                self.d2f2dx12*self.f1
+                + self.d2f2dx1x2*self.f2
+                + self.df2dx2*self.df2dx1
+                + self.d2f2dx1x3*self.f3
+                + self.d2f2dx1x5*self.f5
+            ) * self.f1
             + (
-                self.d2f2dx1x2_func(X)*self.f1_func(X)
-                + self.df2dx1_func(X)
-                + self.d2f2dx22_func(X)*self.f2_func(X)
-                + (self.df2dx2_func(X)**2)
-            ) * self.f2_func(X)
+                self.d2f2dx1x2*self.f1
+                + self.df2dx1
+                + self.d2f2dx22*self.f2
+                + (self.df2dx2**2)
+            ) * self.f2
             + (
-                self.d2f2dx1x3_func(X)*self.f1_func(X)
-                + self.df2dx2_func(X)*self.df2dx3_func(X)
-                + self.d2f2dx32_func(X)*self.f3_func(X)
-            ) * self.f3_func(X)
+                self.d2f2dx1x3*self.f1
+                + self.df2dx2*self.df2dx3
+                + self.d2f2dx32*self.f3
+            ) * self.f3
             + (
-                self.df2dx3_func(X)
-            ) * self.f4_func(X)
+                self.df2dx3
+            ) * self.f4
             + (
-                self.d2f2dx1x5_func(X)*self.f1_func(X)
-                + self.df2dx2_func(X)*self.df2dx5_func(X)
-                + self.d2f2dx52_func(X)*self.f5_func(X)
-            ) * self.f5_func(X)
+                self.d2f2dx1x5*self.f1
+                + self.df2dx2*self.df2dx5
+                + self.d2f2dx52*self.f5
+            ) * self.f5
             + (
-                self.df2dx5_func(X)
-            ) * self.f6_func(X)
+                self.df2dx5
+            ) * self.f6
         )
 
     def hs(self,X):
@@ -458,10 +453,10 @@ class plant_pendulum_1DOF2DOF:
     def Lfhs(self,X):
         return(
             (self.rj**2)*self.k_spr*(self.b_spr**2)*(
-                -(self.rj*self.f1_func(X) - self.rm*self.f3_func(X))*(
+                -(self.rj*self.f1 - self.rm*self.f3)*(
                     np.exp(self.b_spr*(self.rm*X[2] - self.rj*X[0]))
                 )
-                + (self.rj*self.f1_func(X) + self.rm*self.f5_func(X))*(
+                + (self.rj*self.f1 + self.rm*self.f5)*(
                     np.exp(self.b_spr*(self.rm*X[4] + self.rj*X[0]))
                 )
             )
@@ -470,14 +465,14 @@ class plant_pendulum_1DOF2DOF:
         return(
             (self.rj**2)*self.k_spr*(self.b_spr**2)*(
                 (
-                    self.b_spr*(self.rj*self.f1_func(X) - self.rm*self.f3_func(X))**2
-                    - self.rj*self.f2_func(X)
-                    + self.rm*self.f4_func(X)
+                    self.b_spr*(self.rj*self.f1 - self.rm*self.f3)**2
+                    - self.rj*self.f2
+                    + self.rm*self.f4
                 ) * np.exp(self.b_spr*(self.rm*X[2] - self.rj*X[0]))
                 + (
-                    self.b_spr*(self.rj*self.f1_func(X) + self.rm*self.f5_func(X))**2
-                    + self.rj*self.f2_func(X)
-                    + self.rm*self.f6_func(X)
+                    self.b_spr*(self.rj*self.f1 + self.rm*self.f5)**2
+                    + self.rj*self.f2
+                    + self.rm*self.f6
                 ) * np.exp(self.b_spr*(self.rm*X[4] + self.rj*X[0]))
             )
         )
@@ -494,28 +489,20 @@ class plant_pendulum_1DOF2DOF:
     #         ]]).T
     #     )
     def v0(self,X,x1d):
-        k30 = 19.6
-        k20 = 300 #192.0
-        k10 = 2000 # 1101.9
-        k00 = 5000 # 3162.3
         result = (
             x1d[4]
-            + k30*(x1d[3]-self.Lf3h0(X))
-            + k20*(x1d[2]-self.Lf2h0(X))
-            + k10*(x1d[1]-self.Lfh0(X))
-            + k00*(x1d[0]-self.h0(X))
+            + self.k0[3]*(x1d[3]-self.Lf3h0(X))
+            + self.k0[2]*(x1d[2]-self.Lf2h0(X))
+            + self.k0[1]*(x1d[1]-self.Lfh0(X))
+            + self.k0[0]*(x1d[0]-self.h0(X))
         )
-        self.Lf4h0_list.append(result)
         return(result)
     def vs(self,X,Sd):
-        k1s = 25.1
-        k0s = 316.2
         result =(
             Sd[2]
-            + k1s*(Sd[1]-self.Lfhs(X))
-            + k0s*(Sd[0]-self.hs(X))
+            + self.ks[1]*(Sd[1]-self.Lfhs(X))
+            + self.ks[0]*(Sd[0]-self.hs(X))
         )
-        self.Lf2hs_list.append(result)
         return(result)
 
     def Q(self,X):
@@ -539,17 +526,10 @@ class plant_pendulum_1DOF2DOF:
         ])
         return(B*W)
     def return_input(self,X,x1d,Sd):
-    	"""
-    	    grad_f2_func = deriv_funcs["Gradient of f2"]
-    	    hess_f2_func = deriv_funcs["Hessian of f2"]
-    	    jac_f_func = deriv_funcs["Jacobian of f"]
-    	"""
     	try:
-    	    # Q_inv = np.linalg.inv(self.Q(X))
     	    Q_inv = self.Q(X)**(-1)
     	except:
     	    import ipdb; ipdb.set_trace()
-    	# import ipdb; ipdb.set_trace()
     	return(
     	    Q_inv
     	    * (
@@ -567,66 +547,45 @@ class plant_pendulum_1DOF2DOF:
         Y = np.zeros((2,len(Time)),dtype=np.float64)
         X[:,0] = X_o
         Y[:,0] = self.h(X[:,0])
-        # self.update_state_variables(X_o)
-        # deriv_funcs = self.create_derivative_functions()
-        # self.grad_f2_func = deriv_funcs["Gradient of f2"]
-        # self.hess_f2_func = deriv_funcs["Hessian of f2"]
-        # self.jac_f_func = deriv_funcs["Jacobian of f"]
+        self.update_state_variables(X_o)
         statusbar=dsb(0,len(Time)-1,title="Forward Simulation (FBL)")
         self.desiredOutput = np.array([X1d[0,:],Sd[0,:]])
         for i in range(len(Time)-1):
             if i>0:
                 X_measured[0,i] = X[0,i]
                 X_measured[1,i] = (X[0,i]-X[0,i-1])/self.dt
-                # X_measured[1,i] = X[1,i]
                 X_measured[2,i] = X[2,i]
                 X_measured[3,i] = (X[2,i]-X[2,i-1])/self.dt
-                # X_measured[3,i] = X[3,i]
                 X_measured[4,i] = X[4,i]
                 X_measured[5,i] = (X[4,i]-X[4,i-1])/self.dt
-                # X_measured[5,i] = X[5,i]
             else:
                 X_measured[:,i] = X[:,i]
-            # X_measured[:,i] = X[:,i]
             U[:,i] = (self.return_input(X_measured[:,i],X1d[:,i],Sd[:,i])).flatten()
-            # U[:,i] = (self.return_input(X[:,i],X1d[:,i],Sd[:,i])).flatten()
-            # import ipdb; ipdb.set_trace()
             X[:,i+1] = (
                 X[:,i]
-                + dt*(
+                + self.dt*(
                     self.f(X[:,i])
                     + self.g(X[:,i])@U[:,np.newaxis,i]
                 ).T
             )
             Y[:,i+1] = self.h(X[:,i+1])
-            # self.update_state_variables(X[:,i+1])
+            self.update_state_variables(X[:,i+1])
             statusbar.update(i)
         return(X,U,Y,X_measured)
 
 def test_plant():
     params["dt"]=0.001
     params["Simulation Duration"] = 100
+
     plant1 = plant_pendulum_1DOF2DOF(**params)
     plant2 = plant_pendulum_1DOF2DOF(**params)
-    dt = 0.001
-    simulationLength = 100
+
     Time = np.arange(0,params["Simulation Duration"]+params["dt"],params["dt"])
-    So = 0
+
     x1o = np.pi
-    # x35o = (
-    #     (1/(plant1.rm*plant1.b_spr))*np.log(
-    #         So
-    #         /(
-    #             plant1.k_spr*plant1.b_spr*plant1.rj**2*(
-    #                 np.exp(plant1.b_spr*plant1.rj*x1o)
-    #                 + np.exp(-plant1.b_spr*plant1.rj*x1o)
-    #             )
-    #         )
-    #     )
-    # )
-    # X_o = [x1o,0,x35o,0,x35o,0]
     X_o = [x1o,0,plant2.rj*x1o/plant2.rm,0,-plant2.rj*x1o/plant2.rm,0]
-    # X_o = [x1o,0,2*np.pi*0,0,2*np.pi*0,0]
+    params["X_o"] = X_o
+
     X,U,Y = plant1.forward_simulation(Time,X_o)
 
     X1d = np.zeros((5,len(Time)))
@@ -673,7 +632,7 @@ def test_plant():
     X_FBL,U_FBL,Y_FBL,X_measured = plant2.forward_simulation_FL(Time,X_o,X1d,Sd)
     fig1 = plt.figure(figsize=(10,8))
     ax1=plt.gca()
-    # ax1.plot(Time,(180/np.pi)*Y[0,:].T,c="C0",linestyle=":")
+
     ax1.plot(Time,(180/np.pi)*Y_FBL[0,:].T,c="C0")
     ax1.plot(Time,(180/np.pi)*X1d[0,:],c="C0",linestyle="--")
     ax1.set_title(r"$-$ Actual; --- Desired", fontsize=16)

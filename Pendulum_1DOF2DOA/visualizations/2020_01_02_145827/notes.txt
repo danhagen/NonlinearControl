@@ -1,0 +1,30 @@
+[Created 2020/01/02 at 14:58.27]
+
+##############################
+########### Notes ############
+##############################
+
+		NONE
+
+##############################
+######### Parameters #########
+##############################
+
+		Joint Inertia: 0.0115
+		Joint Damping: 0.001
+		Joint Mass: 0.541
+		Joint Moment Arm: 0.05
+		Link Center of Mass: 0.085
+		Link Length: 0.3
+		Motor Inertia: 6.6e-05
+		Motor Damping: 0.00462
+		Motor Moment Arm: 0.02
+		Spring Stiffness Coefficient: 200
+		Spring Shape Coefficient: 10
+		Simulation Duration: 100
+		dt: 0.001
+		Position Gains: {0: 3162.3, 1: 1101.9, 2: 192.0, 3: 19.6}
+		Stiffness Gains: {0: 316.2, 1: 25.1}
+		X_o: [3.141592653589793, 0, 7.853981633974483, 0, -7.853981633974483, 0]
+
+##############################

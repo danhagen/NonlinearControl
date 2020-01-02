@@ -522,6 +522,13 @@ class animate_pendulum:
 
 if __name__ == '__main__':
     Time,X,U,Y,plant1,plant2 = test_plant()
+    save_figures(
+        "visualizations/",
+        "v0",
+        params,
+        ReturnPath=False,
+        SaveAsPDF=True
+    )
     downsamplingFactor = 300
     ani = animate_pendulum(
         Time[::downsamplingFactor],
