@@ -83,8 +83,8 @@ class animate_pendulum:
                 np.zeros((1001,))
             ]
         )
-        self.tendonDeformation1 = self.rm*self.X[2,:]+self.rj*self.X[0,:]
-        self.tendonDeformation2 = self.rm*self.X[4,:]-self.rj*self.X[0,:]
+        self.tendonDeformation1 = self.rm*self.X[2,:]-self.rj*self.X[0,:]
+        self.tendonDeformation2 = self.rm*self.X[4,:]+self.rj*self.X[0,:]
         self.maxTendonDeformation = max([
             self.tendonDeformation1.max(),
             self.tendonDeformation2.max()
@@ -318,7 +318,7 @@ class animate_pendulum:
 
         self.timeStamp = self.ax0.text(
             0,
-            0.75*self.L,
+            -self.L,
             "Time: "+str(self.Time[0])+" s",
             color='0.50',
             fontsize=16,
@@ -354,10 +354,12 @@ class animate_pendulum:
         else:
             self.RangeY1d= max(self.Y1d)-min(self.Y1d)
             self.ax2.set_ylim([min(self.Y1d)-0.1*self.RangeY1d,max(self.Y1d)+0.1*self.RangeY1d])
-            y1_min = np.floor((self.Y[0,:].min()*180/np.pi)/22.5)*22.5
-            y1_min = min([y1_min,np.floor((self.x1d.min()*180/np.pi)/22.5)*22.5])
-            y1_max = np.ceil((self.Y[0,:].max()*180/np.pi)/22.5)*22.5
-            y1_max = max([y1_max,np.ceil((self.x1d.max()*180/np.pi)/22.5)*22.5])
+            # y1_min = np.floor((self.Y[0,:].min()*180/np.pi)/22.5)*22.5
+            # y1_min = min([y1_min,np.floor((self.x1d.min()*180/np.pi)/22.5)*22.5])
+            # y1_max = np.ceil((self.Y[0,:].max()*180/np.pi)/22.5)*22.5
+            # y1_max = max([y1_max,np.ceil((self.x1d.max()*180/np.pi)/22.5)*22.5])
+            y1_min = 0
+            y1_max = 360
             yticks = np.arange(y1_min,y1_max+22.5,22.5)
             yticklabels = []
             for el in yticks:
@@ -399,6 +401,7 @@ class animate_pendulum:
             ])@np.array([self.spring1_x[:,i],self.spring_y])
         )
         self.spring1.set_xdata(self.spring1Arrays[0,:])
+        self.spring1.set_ydata(self.spring1Arrays[1,:])
 
         self.spring2Arrays = (
             np.array([
@@ -411,6 +414,7 @@ class animate_pendulum:
             ])@np.array([self.spring2_x[:,i],self.spring_y])
         )
         self.spring2.set_xdata(self.spring2Arrays[0,:])
+        self.spring2.set_ydata(self.spring2Arrays[1,:])
 
         self.pendulum.set_xdata([0,self.L*np.sin(self.X[0,i])])
         self.pendulum.set_ydata([0,-self.L*np.cos(self.X[0,i])])
@@ -518,7 +522,7 @@ class animate_pendulum:
 
 if __name__ == '__main__':
     Time,X,U,Y,plant1,plant2 = test_plant()
-    downsamplingFactor = 30
+    downsamplingFactor = 300
     ani = animate_pendulum(
         Time[::downsamplingFactor],
         X[:,::downsamplingFactor],
@@ -527,5 +531,6 @@ if __name__ == '__main__':
         plant2.desiredOutput[:,::downsamplingFactor],**params
     )
     ani.start(downsamplingFactor)
-    ani.anim.save('test.mp4', writer='ffmpeg', fps=1000/downsamplingFactor)
+    # ani.anim.save('test.mp4', writer='ffmpeg', fps=1000/downsamplingFactor)
+
     plt.show()
