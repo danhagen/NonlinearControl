@@ -4,7 +4,13 @@
 ########### Notes ############
 ##############################
 
-		NONE
+		Successful tracking of both position and stiffness via feedback linearization. This example is to replicate the results of Palli et al. (2007). See the links below for comparison:
+
+		>>> Position Control Results <<<
+		https://ieeexplore-ieee-org.libproxy1.usc.edu/mediastore_new/IEEE/content/media/4209048/4209049/4209770/4209770-fig-3-source-large.gif
+
+		>>> Stiffness Control Results <<<
+		https://ieeexplore-ieee-org.libproxy1.usc.edu/mediastore_new/IEEE/content/media/4209048/4209049/4209770/4209770-fig-4-source-large.gif
 
 ##############################
 ######### Parameters #########
