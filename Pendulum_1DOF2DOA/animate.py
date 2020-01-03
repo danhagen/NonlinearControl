@@ -10,6 +10,7 @@ import matplotlib.patheffects as pe
 from scipy import signal
 from params import *
 from plant import *
+import sys
 
 class animate_pendulum:
     def __init__(self,Time,X,U,Y,desiredOutput,**params):
@@ -522,22 +523,25 @@ class animate_pendulum:
 
 if __name__ == '__main__':
     Time,X,U,Y,plant1,plant2 = test_plant()
-    save_figures(
-        "visualizations/",
-        "v0",
-        params,
-        ReturnPath=False,
-        SaveAsPDF=True
-    )
-    downsamplingFactor = 300
-    ani = animate_pendulum(
-        Time[::downsamplingFactor],
-        X[:,::downsamplingFactor],
-        U[:,::downsamplingFactor],
-        Y[:,::downsamplingFactor],
-        plant2.desiredOutput[:,::downsamplingFactor],**params
-    )
-    ani.start(downsamplingFactor)
-    # ani.anim.save('test.mp4', writer='ffmpeg', fps=1000/downsamplingFactor)
-
+    if len(sys.argv)-1!=0:
+        import ipdb; ipdb.set_trace()
+        if '--savefigs' in sys.argv:
+            save_figures(
+                "visualizations/",
+                "v0",
+                params,
+                ReturnPath=False,
+                SaveAsPDF=True
+            )
+        if '--animate' in sys.argv:
+            downsamplingFactor = 300
+            ani = animate_pendulum(
+                Time[::downsamplingFactor],
+                X[:,::downsamplingFactor],
+                U[:,::downsamplingFactor],
+                Y[:,::downsamplingFactor],
+                plant2.desiredOutput[:,::downsamplingFactor],**params
+            )
+            ani.start(downsamplingFactor)
+            # ani.anim.save('test.mp4', writer='ffmpeg', fps=1000/downsamplingFactor)
     plt.show()
