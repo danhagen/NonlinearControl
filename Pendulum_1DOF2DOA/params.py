@@ -15,7 +15,7 @@ params = {
     "Spring Stiffness Coefficient" : 200, # N
     "Spring Shape Coefficient" : 10, # unit-less
     "Simulation Duration" : 100, # s
-    "dt" : 0.01, # s
+    "dt" : 0.001, # s
     "Position Gains" : {
         0 : 3162.3,
         1 : 1101.9,

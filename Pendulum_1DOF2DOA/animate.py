@@ -524,7 +524,6 @@ class animate_pendulum:
 if __name__ == '__main__':
     Time,X,U,Y,plant1,plant2 = test_plant()
     if len(sys.argv)-1!=0:
-        import ipdb; ipdb.set_trace()
         if '--savefigs' in sys.argv:
             save_figures(
                 "visualizations/",
