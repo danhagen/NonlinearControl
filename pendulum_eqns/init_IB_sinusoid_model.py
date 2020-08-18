@@ -112,7 +112,7 @@ def return_random_initial_muscle_lengths_and_activations(InitialTension,X_o,**kw
     			+ Lr1
     		)
 
-    L1_LB = 0.5*lo1
+    L1_LB = 0.75*lo1 # TEMP: 2020/05/23 used to be 0.5*lo1
     if L1_UB > 1.5*lo1:
     	L1_UB = 1.5*lo1
     L1 = np.linspace(L1_LB, L2_UB, 1001)
@@ -434,7 +434,8 @@ def find_viable_initial_values(**kwargs):
 		while PositiveActivations == False:
 			rand_index = np.random.choice(len(L1),2)
 			u1,u2 = U1[rand_index[0]],U2[rand_index[1]]
-			if u1>0 and u2>0:
+            # TEMP 2020/05/23 initial muscle 1 length should be shortened.
+			if u1>0 and u2>0 and L1[rand_index[0]]/lo1<=1.025:
 				PositiveActivations = True
 
 		if ReturnAll == False:

@@ -67,7 +67,7 @@ def return_initial_tension(X_o,**kwargs):
 	if ReturnMultipleInitialTensions == True:
 		InitialTension = [
 				(UpperBoundVector-LowerBoundVector)*k + LowerBoundVector
-				for k in np.linspace(0.05,1,8)
+				for k in np.linspace(0.05,1,10)
 		]
 	else:
 		InitialTension = (UpperBoundVector-LowerBoundVector)*np.random.rand() + LowerBoundVector

@@ -159,15 +159,19 @@ def plot_states(t,X,**kwargs):
 
 	NumStates = np.shape(X)[0]
 	X[:2,:] = 180*X[:2,:]/np.pi # converting to deg and deg/s
-	NumRows = int(np.ceil(NumStates/5))
-	if NumStates < 5:
-		NumColumns = NumStates
-	else:
-		NumColumns = 5
+	if NumStates!=8:
+		NumRows = int(np.ceil(NumStates/5))
+		if NumStates < 5:
+			NumColumns = NumStates
+		else:
+			NumColumns = 5
 
-	ColumnNumber = [el%5 for el in np.arange(0,NumStates,1)]
-	RowNumber = [int(el/5) for el in np.arange(0,NumStates,1)]
-	Units = ["(Deg)","(Deg/s)","(N)","(N)","(m)","(m)","(m/s)","(m/s)"]
+		ColumnNumber = [el%5 for el in np.arange(0,NumStates,1)]
+		RowNumber = [int(el/5) for el in np.arange(0,NumStates,1)]
+		Units = ["(Deg)","(Deg/s)","(N)","(N)","(m)","(m)","(m/s)","(m/s)"]
+	else:
+		NumRows=2
+		NumColumns=4
 	if InputString is None:
 		DescriptiveTitle = "Plotting States vs. Time"
 	else:
@@ -185,43 +189,93 @@ def plot_states(t,X,**kwargs):
 						for ax in Figure[1].flatten()]).all()) and \
 					(Figure[1].shape == FigShape)\
 				),\
-				 	("Figure can either be left blank (None) or it must be constructed from data that has the same shape as X.\ntype(Figure) = " + str(type(Figure)) + "\ntype(Figure[0]) = " + str(type(Figure[0])) + "\nFigure[1].shape = " + str(Figure[1].shape) + " instead of (" + str(NumRows) + "," + str(NumColumns) + ")" + "\ntype(Figure[1].flatten()[0]) = " + str(type(Figure[1].flatten()[0])))
+					 ("Figure can either be left blank (None) or it must be constructed from data that has the same shape as X.\ntype(Figure) = " + str(type(Figure)) + "\ntype(Figure[0]) = " + str(type(Figure[0])) + "\nFigure[1].shape = " + str(Figure[1].shape) + " instead of (" + str(NumRows) + "," + str(NumColumns) + ")" + "\ntype(Figure[1].flatten()[0]) = " + str(type(Figure[1].flatten()[0])))
 	if Figure is None:
-		fig, axes = plt.subplots(NumRows,NumColumns,figsize=(3*NumColumns,2*NumRows + 2))
-		plt.subplots_adjust(top=0.85,bottom=0.15,left=0.075,right=0.975)
-		plt.suptitle(DescriptiveTitle,Fontsize=20,y=0.975)
-		if NumStates <=5:
-			for j in range(NumStates):
-				axes[ColumnNumber[j]].spines['right'].set_visible(False)
-				axes[ColumnNumber[j]].spines['top'].set_visible(False)
-				axes[ColumnNumber[j]].plot(t,X[j,:])
-				if ColumnNumber[j]!=0:
-					axes[ColumnNumber[j]].set_xticklabels(\
-										[""]*len(axes[ColumnNumber[j]].get_xticks()))
-				else:
-					axes[ColumnNumber[j]].set_xlabel("Time (s)")
-				axes[ColumnNumber[j]].set_title(r"$x_{" + str(j+1) + "}$ " + Units[j])
+		if NumStates!=8:
+			fig, axes = plt.subplots(NumRows,NumColumns,figsize=(3*NumColumns,2*NumRows + 2))
+			plt.subplots_adjust(top=0.85,bottom=0.15,left=0.075,right=0.975)
+			plt.suptitle(DescriptiveTitle,Fontsize=20,y=0.975)
+			if NumStates <=5:
+				for j in range(NumStates):
+					axes[ColumnNumber[j]].spines['right'].set_visible(False)
+					axes[ColumnNumber[j]].spines['top'].set_visible(False)
+					axes[ColumnNumber[j]].plot(t,X[j,:])
+					if ColumnNumber[j]!=0:
+						axes[ColumnNumber[j]].set_xticklabels(\
+											[""]*len(axes[ColumnNumber[j]].get_xticks()))
+					else:
+						axes[ColumnNumber[j]].set_xlabel("Time (s)")
+					axes[ColumnNumber[j]].set_title(r"$x_{" + str(j+1) + "}$ " + Units[j])
+			else:
+				for j in range(NumStates):
+					axes[RowNumber[j],ColumnNumber[j]].spines['right'].set_visible(False)
+					axes[RowNumber[j],ColumnNumber[j]].spines['top'].set_visible(False)
+					axes[RowNumber[j],ColumnNumber[j]].plot(t,X[j,:])
+					if not(RowNumber[j] == RowNumber[-1] and ColumnNumber[j]==0):
+						axes[RowNumber[j],ColumnNumber[j]].set_xticklabels(\
+											[""]*len(axes[RowNumber[j],ColumnNumber[j]].get_xticks()))
+					else:
+						axes[RowNumber[j],ColumnNumber[j]].set_xlabel("Time (s)")
+					axes[RowNumber[j],ColumnNumber[j]].set_title(r"$x_{" + str(j+1) + "}$ "+ Units[j])
+				if NumStates%5!=0:
+					[fig.delaxes(axes[RowNumber[-1],el]) for el in range(ColumnNumber[-1]+1,5)]
 		else:
-			for j in range(NumStates):
-				axes[RowNumber[j],ColumnNumber[j]].spines['right'].set_visible(False)
-				axes[RowNumber[j],ColumnNumber[j]].spines['top'].set_visible(False)
-				axes[RowNumber[j],ColumnNumber[j]].plot(t,X[j,:])
-				if not(RowNumber[j] == RowNumber[-1] and ColumnNumber[j]==0):
-					axes[RowNumber[j],ColumnNumber[j]].set_xticklabels(\
-										[""]*len(axes[RowNumber[j],ColumnNumber[j]].get_xticks()))
-				else:
-					axes[RowNumber[j],ColumnNumber[j]].set_xlabel("Time (s)")
-				axes[RowNumber[j],ColumnNumber[j]].set_title(r"$x_{" + str(j+1) + "}$ "+ Units[j])
-			if NumStates%5!=0:
-				[fig.delaxes(axes[RowNumber[-1],el]) for el in range(ColumnNumber[-1]+1,5)]
+			units = [
+				r"$\theta$ (deg)", r"$\dot{\theta}$ (deg/s)",
+				r"$f_{T,1}$ (N)", r"$f_{T,2}$ (N)",
+				r"$l_{m,1}$ (m)", r"$l_{m,2}$ (m)",
+				r"$v_{m,1}$ (m/s)", r"$v_{m,2}$ (m/s)"
+			]
+			fig, axes = plt.subplots(2,4,figsize=(14,7),sharex=True)
+			plt.subplots_adjust(top=0.85,bottom=0.15,left=0.075,right=0.975)
+			plt.suptitle(DescriptiveTitle,Fontsize=20,y=0.975)
+			for ax in axes.flatten():
+				ax.spines['top'].set_visible(False)
+				ax.spines['right'].set_visible(False)
+			for i in range(2):
+				for j in range(4):
+					if i==1 and j==0:
+						axes[i,j].set_xlabel("Time (s)")
+					else:
+						plt.setp(
+							axes[i,j].get_xticklabels(),
+							visible=False
+						)
+
+			axes[0,0].plot(t,X[0,:])
+			axes[0,0].set_title(units[0])
+			axes[1,0].plot(t,X[1,:])
+			axes[1,0].set_title(units[1])
+			axes[0,1].plot(t,X[2,:])
+			axes[0,1].set_title(units[2])
+			axes[1,1].plot(t,X[3,:])
+			axes[1,1].set_title(units[3])
+			axes[0,2].plot(t,X[4,:])
+			axes[0,2].set_title(units[4])
+			axes[1,2].plot(t,X[5,:])
+			axes[1,2].set_title(units[5])
+			axes[0,3].plot(t,X[6,:])
+			axes[0,3].set_title(units[6])
+			axes[1,3].plot(t,X[7,:])
+			axes[1,3].set_title(units[7])
 	else:
 		fig = Figure[0]
 		axes = Figure[1]
-		for i in range(NumStates):
-			if NumRows != 1:
-				axes[RowNumber[i],ColumnNumber[i]].plot(t,X[i,:])
-			else:
-				axes[ColumnNumber[i]].plot(t,X[i,:])
+		if NumStates!=8:
+			for i in range(NumStates):
+				if NumRows != 1:
+					axes[RowNumber[i],ColumnNumber[i]].plot(t,X[i,:])
+				else:
+					axes[ColumnNumber[i]].plot(t,X[i,:])
+		else:
+			axes[0,0].plot(t,X[0,:])
+			axes[1,0].plot(t,X[1,:])
+			axes[0,1].plot(t,X[2,:])
+			axes[1,1].plot(t,X[3,:])
+			axes[0,2].plot(t,X[4,:])
+			axes[1,2].plot(t,X[5,:])
+			axes[0,3].plot(t,X[6,:])
+			axes[1,3].plot(t,X[7,:])
 	X[:2,:] = np.pi*X[:2,:]/180
 	if Return == True:
 		return((fig,axes))
@@ -269,7 +323,7 @@ def plot_inputs(t,U,**kwargs):
 						for ax in Figure[1].flatten()]).all()) and \
 					(Figure[1].shape == (2,))\
 				),\
-				 	"Figure can either be left blank (None) or it must be constructed from data that has the same shape as U."
+					 "Figure can either be left blank (None) or it must be constructed from data that has the same shape as U."
 	if Figure is None:
 		fig, axes = plt.subplots(1,2,figsize=(13,5))
 		plt.subplots_adjust(top=0.9,hspace=0.4,bottom=0.1,left=0.075,right=0.975)
@@ -282,6 +336,8 @@ def plot_inputs(t,U,**kwargs):
 		axes[0].spines['top'].set_visible(False)
 		axes[0].set_ylabel(r"$u_1$")
 		axes[0].set_xlabel("Time (s)")
+		axes[0].spines['top'].set_visible(False)
+		axes[0].spines['right'].set_visible(False)
 
 		axes[1].plot(t,U[1,:],lw=2)
 		axes[1].plot([-1,t[-1]+1],[0,0],'k--',lw=0.5)
@@ -291,6 +347,8 @@ def plot_inputs(t,U,**kwargs):
 		axes[1].set_ylabel(r"$u_2$")
 		axes[1].set_xticks(axes[0].get_xticks())
 		axes[1].set_xticklabels([""]*len(axes[0].get_xticks()))
+		axes[1].spines['top'].set_visible(False)
+		axes[1].spines['right'].set_visible(False)
 	else:
 		fig = Figure[0]
 		axes = Figure[1]
@@ -369,7 +427,7 @@ def plot_l_m_comparison(t,X,**kwargs):
 						for ax in Figure[1].flatten()]).all()) and \
 					(Figure[1].shape == (2,2))\
 				),\
-				 	"Figure can either be left blank (None) or it must be constructed from data that has the same shape as X."
+					 "Figure can either be left blank (None) or it must be constructed from data that has the same shape as X."
 
 	if Figure is None:
 		fig, axes = plt.subplots(2,2,figsize = (14,7))
@@ -401,19 +459,27 @@ def plot_l_m_comparison(t,X,**kwargs):
 		axes[0,0].plot(t,l_m1)
 		axes[0,0].set_ylabel(r"$l_{m,1}/l_{MTU,1}$ (m)")
 		axes[0,0].set_xlabel("Time (s)")
+		axes[0,0].spines['top'].set_visible(False)
+		axes[0,0].spines['right'].set_visible(False)
 
 		axes[0,1].plot(t,l_m1-l_m1_by_MTU_approximation)
 		axes[0,1].set_ylabel("Error (m)")
 		axes[0,1].set_xlabel("Time (s)")
+		axes[0,1].spines['top'].set_visible(False)
+		axes[0,1].spines['right'].set_visible(False)
 
 		axes[1,0].plot(t,l_m2_by_MTU_approximation, '0.70')
 		axes[1,0].plot(t,l_m2)
 		axes[1,0].set_ylabel(r"$l_{m,2}/l_{MTU,2}$ (m)")
 		axes[1,0].set_xlabel("Time (s)")
+		axes[1,0].spines['top'].set_visible(False)
+		axes[1,0].spines['right'].set_visible(False)
 
 		axes[1,1].plot(t,l_m2-l_m2_by_MTU_approximation)
 		axes[1,1].set_ylabel("Error (m)")
 		axes[1,1].set_xlabel("Time (s)")
+		axes[1,1].spines['top'].set_visible(False)
+		axes[1,1].spines['right'].set_visible(False)
 	else:
 		fig = Figure[0]
 		axes = Figure[1]
@@ -461,5 +527,299 @@ def plot_l_m_comparison(t,X,**kwargs):
 		if ReturnError == True:
 			plt.show()
 			return([l_m1-l_m1_by_MTU_approximation,l_m2-l_m2_by_MTU_approximation])
+		else:
+			plt.show()
+
+def plot_norm_l_m_comparison(t,X,**kwargs):
+
+	"""
+
+	~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	**kwargs
+	~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	1) Return - must be a bool. Determines if the function returns a function handle. Default is False.
+
+	2) InputString - must be a string. Input to the DescriptiveTitle that can be used to personalize the title. Default is None.
+
+	"""
+	import numpy as np
+	import matplotlib.pyplot as plt
+
+	assert (np.shape(X)[0] >= 2) \
+				and (np.shape(X)[1] == len(t)) \
+					and (str(type(X)) == "<class 'numpy.ndarray'>"), \
+			"X must be a (M,N) numpy.ndarray, where M is greater than or equal to 2 and N is the length of t."
+
+	Return = kwargs.get("Return",False)
+	assert type(Return)==bool, "Return must be either True or False."
+
+	InputString = kwargs.get("InputString",None)
+	assert InputString is None or type(InputString)==str, "InputString must either be None or a str."
+	if InputString is None:
+		DescriptiveTitle = "Muscle vs. Musculotendon Lengths"
+	else:
+		DescriptiveTitle = "Muscle vs. Musculotendon Lengths\n" + InputString + " Driven"
+
+	L_m = kwargs.get("MuscleLengths",None)
+	assert (L_m is None) or (str(type(L_m))=="<class 'numpy.ndarray'>" and np.shape(L_m)==(2,len(t))), "L_m must either be a numpy.ndarray of size (2,N) or left as None (Default)."
+
+	V_m = kwargs.get("MuscleVelocities",None)
+	assert (V_m is None) or (str(type(V_m))=="<class 'numpy.ndarray'>" and np.shape(V_m)==(2,len(t))), "V_m must either be a numpy.ndarray of size (2,N) or left as None (Default)."
+
+	ReturnError = kwargs.get("ReturnError",False)
+	assert type(ReturnError)==bool, "ReturnError must be either True or False."
+
+	IgnorePennation = kwargs.get("IgnorePennation",True)
+	assert type(IgnorePennation)==bool, "IgnorePennation must be either True (default) or False."
+
+	assert L_m is not None or V_m is not None, "Error! Need to input some length/velocity measurement for the muscles."
+
+	if L_m is None:
+		"""
+		This is for the muscle velocity driven controller. These values of initial muscle length are estimates taken to be the optimal muscle lengths. We will need to run some sensitivity analysis to ensure that this does not drastically effect the deviations from the MTU estimate.
+		"""
+		l_m1 = integrate.cumtrapz(V_m[0,:],t,initial = 0) + np.ones(len(t))*lo1
+		l_m2 = integrate.cumtrapz(V_m[1,:],t,initial = 0) + np.ones(len(t))*lo2
+	else:
+		l_m1 = L_m[0,:]
+		l_m2 = L_m[1,:]
+
+	"""
+	Note: X must be transposed in order to run through map()
+	"""
+	Figure = kwargs.get("Figure",None)
+	assert (Figure is None) \
+				or (
+					(type(Figure)==tuple) and \
+					(str(type(Figure[0]))=="<class 'matplotlib.figure.Figure'>") and\
+					(np.array([str(type(ax))=="<class 'matplotlib.axes._subplots.AxesSubplot'>" \
+						for ax in Figure[1].flatten()]).all()) and \
+					(Figure[1].shape == (2,2))\
+				),\
+					 "Figure can either be left blank (None) or it must be constructed from data that has the same shape as X."
+
+	if Figure is None:
+		fig, axes = plt.subplots(2,2,figsize = (14,7))
+		plt.suptitle(DescriptiveTitle,Fontsize=20,y=0.975)
+		if IgnorePennation==True:
+			l_m1_by_MTU_approximation = integrate.cumtrapz(
+											np.array(list(map(lambda X: v_MTU1(X),X.T))),\
+											t,initial=0
+										) \
+										+ np.ones(len(t))*l_m1[0]
+			l_m2_by_MTU_approximation = integrate.cumtrapz(
+											np.array(list(map(lambda X: v_MTU2(X),X.T))),\
+											t,initial=0
+										) \
+										+ np.ones(len(t))*l_m2[0]
+		else:
+			l_m1_by_MTU_approximation = integrate.cumtrapz(
+											np.array(list(map(lambda X: v_MTU1(X),X.T))),\
+											t,initial=0
+										)/np.cos(α1) \
+										+ np.ones(len(t))*l_m1[0]
+			l_m2_by_MTU_approximation = integrate.cumtrapz(
+											np.array(list(map(lambda X: v_MTU2(X),X.T))),\
+											t,initial=0
+										)/np.cos(α2) \
+										+ np.ones(len(t))*l_m2[0]
+
+		axes[0,0].plot(t,l_m1_by_MTU_approximation/lo1, '0.70')
+		axes[0,0].plot(t,l_m1/lo1)
+		axes[0,0].set_ylabel(r"$\hat{l}_{m,1}/\hat{l}_{MTU,1}$")
+		axes[0,0].set_xlabel("Time (s)")
+		axes[0,0].spines['top'].set_visible(False)
+		axes[0,0].spines['right'].set_visible(False)
+
+		axes[0,1].plot(t,(l_m1-l_m1_by_MTU_approximation)/lo1)
+		axes[0,1].set_ylabel("Normalized Error")
+		axes[0,1].set_xlabel("Time (s)")
+		axes[0,1].spines['top'].set_visible(False)
+		axes[0,1].spines['right'].set_visible(False)
+
+		axes[1,0].plot(t,l_m2_by_MTU_approximation/lo2, '0.70')
+		axes[1,0].plot(t,l_m2/lo2)
+		axes[1,0].set_ylabel(r"$\hat{l}_{m,2}/\hat{l}_{MTU,2}$")
+		axes[1,0].set_xlabel("Time (s)")
+		axes[1,0].spines['top'].set_visible(False)
+		axes[1,0].spines['right'].set_visible(False)
+
+		axes[1,1].plot(t,(l_m2-l_m2_by_MTU_approximation)/lo2)
+		axes[1,1].set_ylabel("Normalized Error")
+		axes[1,1].set_xlabel("Time (s)")
+		axes[1,1].spines['top'].set_visible(False)
+		axes[1,1].spines['right'].set_visible(False)
+	else:
+		fig = Figure[0]
+		axes = Figure[1]
+		if IgnorePennation==False:
+			l_m1_by_MTU_approximation = integrate.cumtrapz(
+											np.array(list(map(lambda X: v_MTU1(X),X.T))),\
+											t,initial=0
+										) \
+										+ np.ones(len(t))*l_m1[0]
+			l_m2_by_MTU_approximation = integrate.cumtrapz(
+											np.array(list(map(lambda X: v_MTU2(X),X.T))),\
+											t,initial=0
+										) \
+										+ np.ones(len(t))*l_m2[0]
+		else:
+			l_m1_by_MTU_approximation = integrate.cumtrapz(
+											np.array(list(map(lambda X: v_MTU1(X),X.T))),\
+											t,initial=0
+										)/np.cos(α1) \
+										+ np.ones(len(t))*l_m1[0]
+			l_m2_by_MTU_approximation = integrate.cumtrapz(
+											np.array(list(map(lambda X: v_MTU2(X),X.T))),\
+											t,initial=0
+										)/np.cos(α2) \
+										+ np.ones(len(t))*l_m2[0]
+		axes[0,0].plot(t,l_m1_by_MTU_approximation/lo1, '0.70')
+		axes[0,0].plot(t,l_m1/lo1)
+
+		axes[0,1].plot(t,(l_m1-l_m1_by_MTU_approximation)/lo1)
+
+		axes[1,0].plot(t,l_m2_by_MTU_approximation/lo2, '0.70')
+		axes[1,0].plot(t,l_m2/lo2)
+
+		axes[1,1].plot(t,(l_m2-l_m2_by_MTU_approximation)/lo2)
+
+	if Return == True:
+		if ReturnError == True:
+			return(
+				(fig,axes),
+				[l_m1-l_m1_by_MTU_approximation,l_m2-l_m2_by_MTU_approximation]
+				)
+		else:
+			return((fig,axes))
+	else:
+		if ReturnError == True:
+			plt.show()
+			return([l_m1-l_m1_by_MTU_approximation,l_m2-l_m2_by_MTU_approximation])
+		else:
+			plt.show()
+
+def plot_norm_v_m_comparison(t,X,**kwargs):
+
+	"""
+
+	~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	**kwargs
+	~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	1) Return - must be a bool. Determines if the function returns a function handle. Default is False.
+
+	2) InputString - must be a string. Input to the DescriptiveTitle that can be used to personalize the title. Default is None.
+
+	"""
+	import numpy as np
+	import matplotlib.pyplot as plt
+
+	assert (np.shape(X)[0] >= 2) \
+				and (np.shape(X)[1] == len(t)) \
+					and (str(type(X)) == "<class 'numpy.ndarray'>"), \
+			"X must be a (M,N) numpy.ndarray, where M is greater than or equal to 2 and N is the length of t."
+
+	Return = kwargs.get("Return",False)
+	assert type(Return)==bool, "Return must be either True or False."
+
+	InputString = kwargs.get("InputString",None)
+	assert InputString is None or type(InputString)==str, "InputString must either be None or a str."
+	if InputString is None:
+		DescriptiveTitle = "Muscle vs. Musculotendon Velocities\n(Normalized)"
+	else:
+		DescriptiveTitle = "Muscle vs. Musculotendon Velocities\n" + InputString + " Driven\n(Normalized)"
+
+	ReturnError = kwargs.get("ReturnError",False)
+	assert type(ReturnError)==bool, "ReturnError must be either True or False."
+
+	IgnorePennation = kwargs.get("IgnorePennation",True)
+	assert type(IgnorePennation)==bool, "IgnorePennation must be either True (default) or False."
+
+	v_m1 = X[6,:]
+	v_m2 = X[7,:]
+
+	"""
+	Note: X must be transposed in order to run through map()
+	"""
+	Figure = kwargs.get("Figure",None)
+	assert (Figure is None) \
+				or (
+					(type(Figure)==tuple) and \
+					(str(type(Figure[0]))=="<class 'matplotlib.figure.Figure'>") and\
+					(np.array([str(type(ax))=="<class 'matplotlib.axes._subplots.AxesSubplot'>" \
+						for ax in Figure[1].flatten()]).all()) and \
+					(Figure[1].shape == (2,2))\
+				),\
+					 "Figure can either be left blank (None) or it must be constructed from data that has the same shape as X."
+
+	if Figure is None:
+		fig, axes = plt.subplots(2,2,figsize = (14,7))
+		plt.suptitle(DescriptiveTitle,Fontsize=20,y=0.975)
+		if IgnorePennation==True:
+			v_MT1 = np.array(list(map(lambda X: v_MTU1(X),X.T)))
+			v_MT2 = np.array(list(map(lambda X: v_MTU2(X),X.T)))
+		else:
+			v_MT1 = np.array(list(map(lambda X: v_MTU1(X),X.T)))/np.cos(α1)
+			v_MT2 = np.array(list(map(lambda X: v_MTU2(X),X.T)))/np.cos(α2)
+
+		axes[0,0].plot(t,v_MT1/lo1, '0.70')
+		axes[0,0].plot(t,v_m1/lo1)
+		axes[0,0].set_ylabel(r"$\hat{v}_{m,1}/\hat{v}_{MT,1}$")
+		axes[0,0].set_xlabel("Time (s)")
+		axes[0,0].spines["top"].set_visible(False)
+		axes[0,0].spines["right"].set_visible(False)
+
+		axes[0,1].plot(t,(v_m1-v_MT1)/lo1)
+		axes[0,1].set_ylabel("Normalized Error")
+		axes[0,1].set_xlabel("Time (s)")
+		axes[0,1].spines["top"].set_visible(False)
+		axes[0,1].spines["right"].set_visible(False)
+
+		axes[1,0].plot(t,v_MT2/lo2, '0.70')
+		axes[1,0].plot(t,v_m2/lo2)
+		axes[1,0].set_ylabel(r"$\hat{v}_{m,2}/\hat{v}_{MT,2}$")
+		axes[1,0].set_xlabel("Time (s)")
+		axes[1,0].spines["top"].set_visible(False)
+		axes[1,0].spines["right"].set_visible(False)
+
+		axes[1,1].plot(t,(v_m2-v_MT2)/lo2)
+		axes[1,1].set_ylabel("Normalized Error")
+		axes[1,1].set_xlabel("Time (s)")
+		axes[1,1].spines["top"].set_visible(False)
+		axes[1,1].spines["right"].set_visible(False)
+	else:
+		fig = Figure[0]
+		axes = Figure[1]
+		if IgnorePennation==True:
+			v_MT1 = np.array(list(map(lambda X: v_MTU1(X),X.T)))
+			v_MT2 = np.array(list(map(lambda X: v_MTU2(X),X.T)))
+		else:
+			v_MT1 = np.array(list(map(lambda X: v_MTU1(X),X.T)))/np.cos(α1)
+			v_MT2 = np.array(list(map(lambda X: v_MTU2(X),X.T)))/np.cos(α2)
+
+		axes[0,0].plot(t,v_MT1/lo1, '0.70')
+		axes[0,0].plot(t,v_m1/lo1)
+
+		axes[0,1].plot(t,(v_m1-v_MT1)/lo1)
+
+		axes[1,0].plot(t,v_MT2/lo2, '0.70')
+		axes[1,0].plot(t,v_m2/lo2)
+
+		axes[1,1].plot(t,(v_m2-v_MT2)/lo2)
+
+	if Return == True:
+		if ReturnError == True:
+			return(
+				(fig,axes),
+				[v_m1-v_MT1,v_m2-v_MT2]
+				)
+		else:
+			return((fig,axes))
+	else:
+		if ReturnError == True:
+			plt.show()
+			return([v_m1-v_MT1,v_m2-v_MT2])
 		else:
 			plt.show()
