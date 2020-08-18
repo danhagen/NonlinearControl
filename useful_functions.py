@@ -3,8 +3,8 @@ import os.path
 import time
 import matplotlib._pylab_helpers
 from matplotlib.backends.backend_pdf import PdfPages
-import plotly.plotly as py
-import plotly.tools as tls
+# import plotly.plotly as py
+# import plotly.tools as tls
 
 def return_length_of_nonzero_array(X):
 	"""
@@ -67,16 +67,16 @@ def save_figures(Destination,BaseFileName,**kwargs):
 		else:
 			[PDFFile.savefig(fig) for fig in figs]
 		PDFFile.close()
-
-def save_figures_to_plotly(FileName,**kwargs):
-	"""
-
-	"""
-	figs = kwargs.get("figs",
-		[manager.canvas.figure for manager in matplotlib._pylab_helpers.Gcf.get_all_fig_managers()]
-		)
-
-	FileTime = time.strftime("%Y_%m_%d_%H%M%S")
-	for i in range(len(figs)):
-		plotly_fig = tls.mpl_to_plotly(figs[i])
-		py.plot(plotly_fig,filename=(FileName + "-" + FileTime + "-" + "{:0>2d}".format(i+1)))
+#
+# def save_figures_to_plotly(FileName,**kwargs):
+# 	"""
+#
+# 	"""
+# 	figs = kwargs.get("figs",
+# 		[manager.canvas.figure for manager in matplotlib._pylab_helpers.Gcf.get_all_fig_managers()]
+# 		)
+#
+# 	FileTime = time.strftime("%Y_%m_%d_%H%M%S")
+# 	for i in range(len(figs)):
+# 		plotly_fig = tls.mpl_to_plotly(figs[i])
+# 		py.plot(plotly_fig,filename=(FileName + "-" + FileTime + "-" + "{:0>2d}".format(i+1)))
