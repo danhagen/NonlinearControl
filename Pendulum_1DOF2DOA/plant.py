@@ -548,7 +548,7 @@ class plant_pendulum_1DOF2DOF:
         X[:,0] = X_o
         Y[:,0] = self.h(X[:,0])
         self.update_state_variables(X_o)
-        statusbar=dsb(0,len(Time)-1,title="Forward Simulation (FBL)")
+        statusbar=dsb(0,len(Time)-1,title="Feedback Linearization")
         self.desiredOutput = np.array([X1d[0,:],Sd[0,:]])
         for i in range(len(Time)-1):
             if i>0:
@@ -624,10 +624,13 @@ def test_plant():
     X1d[3,:] = np.gradient(X1d[2,:],params["dt"])
     X1d[4,:] = np.gradient(X1d[3,:],params["dt"])
 
+    # Sd = np.zeros((3,len(Time)))
+    # Sd[0,:] = 80 - 20*np.cos(16*np.pi*Time/25)
+    # Sd[1,:] = 64*np.pi*np.sin(16*np.pi*Time/25)/5
+    # Sd[2,:] = (4**5)*(np.pi**2)*np.cos(16*np.pi*Time/25)/(5**3)
     Sd = np.zeros((3,len(Time)))
-    Sd[0,:] = 80 - 20*np.cos(16*np.pi*Time/25)
-    Sd[1,:] = 64*np.pi*np.sin(16*np.pi*Time/25)/5
-    Sd[2,:] = (4**5)*(np.pi**2)*np.cos(16*np.pi*Time/25)/(5**3)
+    Sd[0,:] = 20*np.ones((1,len(Time)))
+
 
     X_FBL,U_FBL,Y_FBL,X_measured = plant2.forward_simulation_FL(Time,X_o,X1d,Sd)
     fig1 = plt.figure(figsize=(10,8))
