@@ -8,7 +8,7 @@ from pendulum_eqns.init_IB_sinusoid_model import *
 
 
 N_seconds = 4
-N = N_seconds*5000 + 1
+N = N_seconds*10000 + 1
 Time = np.linspace(0,N_seconds,N)
 dt = Time[1]-Time[0]
 
@@ -89,6 +89,7 @@ def run_sim_IB_sinus_act(**kwargs):
     assert type(Bounds)==list and np.shape(Bounds)==(2,2), "Bounds should be a list of shape (2,2)."
 
     Amp = kwargs.get("Amp",1)
+    PhaseOffset = kwargs.get("PhaseOffset",0)
     if Amp!="Scaled":
         assert type(Amp) in [int,float], "Amp should be an int or a float."
 
@@ -112,12 +113,16 @@ def run_sim_IB_sinus_act(**kwargs):
         	0,
         	0]
         U = np.zeros((2,N))
-        if Amp == "Scaled":
+        if Amp is "Scaled":
             Amp = 0.25*InitialActivations[0]
         assert Amp>0, "Amp became negative. Run Again."
+        # import ipdb; ipdb.set_trace()
 
-        U[0,:] = InitialActivations[0] + Amp*(np.cos(2*np.pi*Freq*Time)-1)
+        newBase = InitialActivations[0] - Amp*(np.cos(PhaseOffset)-1)
+        U[0,:] = newBase + Amp*(np.cos(2*np.pi*Freq*Time+PhaseOffset)-1)
         U[1,0] = InitialActivations[1]
+        # U[0,:] = InitialActivations[0] + Amp*(np.cos(2*np.pi*Freq*Time+PhaseOffset)-1)
+        # U[1,0] = InitialActivations[1]
 
         try:
             cprint("Attempt #" + str(int(AttemptNumber)) + ":\n", 'green')
@@ -166,7 +171,7 @@ def run_N_sim_IB_sinus_act(**kwargs):
 
     6) Freq - scalar value given in Hz.
 
-    7) PhaseOffset - scalar value in [0,360).
+    7) PhaseOffset - scalar value in [0,2*np.pi).
 
     8) InitialTensionAcceleration - will be passed to find_viable_initial_values(**kwargs). Must be a numpy array of shape (2,)
 
@@ -256,16 +261,27 @@ def plot_N_sim_IB_sinus_act(t,TotalX,TotalU,**kwargs):
     for j in range(np.shape(TotalX)[0]):
         if j == 0:
             fig3 = plot_states(t,TotalX[j],Return=True,InputString = "Muscle Activations")
+            if Time[-1]>1:
+                fig3b = plot_states(t[int(1/dt):int((2+dt)/dt)],TotalX[j][:,int(1/dt):int((2+dt)/dt)],Return=True,InputString = "Muscle Activations")
             fig4 = plot_inputs(t,TotalU[j],Return=True,InputString = "Muscle Activations")
             fig5,Error = plot_l_m_comparison(
             t,TotalX[j],MuscleLengths=TotalX[j,4:6,:],
             Return=True,InputString="Muscle Activation",ReturnError=True,IgnorePennation=IgnorePennation
+            )
+            fig6 = plot_norm_l_m_comparison(
+            t,TotalX[j],MuscleLengths=TotalX[j,4:6,:],
+            Return=True,InputString="Muscle Activation",ReturnError=False,IgnorePennation=IgnorePennation
+            )
+            fig7,vError = plot_norm_v_m_comparison(
+                t,TotalX[j],Return=True,InputString="Muscle Activation",ReturnError=True,IgnorePennation=IgnorePennation
             )
             Error1 = Error[0][np.newaxis,:]
             Error2 = Error[1][np.newaxis,:]
         else:
             fig3 = plot_states(t,TotalX[j],Return=True,InputString = "Muscle Activations",\
             	              Figure=fig3)
+            if Time[-1]>1:
+                fig3b = plot_states(t[int(1/dt):int((2+dt)/dt)],TotalX[j][:,int(1/dt):int((2+dt)/dt)],Return=True,InputString = "Muscle Activations",Figure=fig3b)
             fig4 = plot_inputs(t,TotalU[j],Return=True,InputString = "Muscle Activations", \
             	              Figure = fig4)
             fig5,Error = plot_l_m_comparison(
@@ -273,15 +289,31 @@ def plot_N_sim_IB_sinus_act(t,TotalX,TotalU,**kwargs):
             Return=True,InputString="Muscle Activation",ReturnError=True,IgnorePennation=IgnorePennation,
             Figure=fig5
             )
+            fig6 = plot_norm_l_m_comparison(
+            t,TotalX[j],MuscleLengths=TotalX[j,4:6,:],
+            Return=True,InputString="Muscle Activation",ReturnError=False,IgnorePennation=IgnorePennation,
+            Figure=fig6
+            )
+            fig7,vError = plot_norm_v_m_comparison(
+            t,TotalX[j],
+            Return=True,InputString="Muscle Activation",ReturnError=True,IgnorePennation=IgnorePennation,
+            Figure=fig7
+            )
             Error1 = np.concatenate([Error1,Error[0][np.newaxis,:]],axis=0)
             Error2 = np.concatenate([Error2,Error[1][np.newaxis,:]],axis=0)
         statusbar.update(j)
 
     if Return == True:
         if ReturnError == True:
-            return([fig1,fig2,fig3,fig4,fig5],[-Error1,-Error2])
+            if Time[-1]>1:
+                return([fig1,fig2,fig3,fig3b,fig4,fig5,fig6,fig7],[-Error1,-Error2])
+            else:
+                return([fig1,fig2,fig3,fig4,fig5,fig6,fig7],[-Error1,-Error2])
         else:
-            return([fig1,fig2,fig3,fig4,fig5])
+            if Time[-1]>1:
+                return([fig1,fig2,fig3,fig3b,fig4,fig5,fig6,fig7])
+            else:
+                return([fig1,fig2,fig3,fig4,fig5,fig6,fig7])
     else:
         if ReturnError == True:
             plt.show()
